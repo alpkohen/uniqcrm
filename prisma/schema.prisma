@@ -1,0 +1,242 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("MEMBER")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  contacts      Contact[]
+  companies     Company[]
+  deals         Deal[]
+  activities    Activity[]
+  tasks         Task[]
+  meetings      Meeting[]
+  workflowCards WorkflowCard[]
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  website   String?
+  phone     String?
+  city      String?
+  sector    String?
+  notes     String?
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contacts Contact[]
+  deals    Deal[]
+  cards    WorkflowCard[]
+
+  @@index([name])
+  @@index([ownerId])
+}
+
+model Contact {
+  id         String   @id @default(cuid())
+  firstName  String
+  lastName   String
+  email      String?
+  phone      String?
+  title      String?
+  city       String?
+  companyId  String?
+  company    Company? @relation(fields: [companyId], references: [id])
+  ownerId    String
+  owner      User     @relation(fields: [ownerId], references: [id])
+  customData String   @default("{}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tags       ContactTag[]
+  activities Activity[]
+  tasks      Task[]
+  meetings   Meeting[]
+  deals      Deal[]
+  cards      WorkflowCard[]
+
+  @@index([lastName])
+  @@index([firstName])
+  @@index([email])
+  @@index([companyId])
+  @@index([ownerId])
+}
+
+model Tag {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  color     String       @default("#0f766e")
+  contacts  ContactTag[]
+  createdAt DateTime     @default(now())
+}
+
+model ContactTag {
+  contactId String
+  tagId     String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, tagId])
+  @@index([tagId])
+}
+
+model CustomField {
+  id        String  @id @default(cuid())
+  key       String  @unique
+  label     String
+  type      String
+  options   String  @default("[]")
+  required  Boolean @default(false)
+  sortOrder Int     @default(0)
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  type      String
+  title     String
+  body      String?
+  contactId String
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([contactId])
+  @@index([createdAt])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  dueAt       DateTime
+  completedAt DateTime?
+  contactId   String?
+  contact     Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  ownerId     String
+  owner       User      @relation(fields: [ownerId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([dueAt])
+  @@index([ownerId])
+  @@index([completedAt])
+}
+
+model Meeting {
+  id        String   @id @default(cuid())
+  title     String
+  notes     String?
+  startsAt  DateTime
+  location  String?
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([startsAt])
+  @@index([ownerId])
+}
+
+model Pipeline {
+  id     String          @id @default(cuid())
+  name   String
+  stages PipelineStage[]
+  deals  Deal[]
+}
+
+model PipelineStage {
+  id         String   @id @default(cuid())
+  pipelineId String
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  name       String
+  sortOrder  Int
+  color      String   @default("#64748b")
+  isWon      Boolean  @default(false)
+  isLost     Boolean  @default(false)
+  deals      Deal[]
+
+  @@index([pipelineId, sortOrder])
+}
+
+model Deal {
+  id         String        @id @default(cuid())
+  title      String
+  amount     Int           @default(0)
+  currency   String        @default("TRY")
+  status     String        @default("OPEN")
+  pipelineId String
+  pipeline   Pipeline      @relation(fields: [pipelineId], references: [id])
+  stageId    String
+  stage      PipelineStage @relation(fields: [stageId], references: [id])
+  contactId  String?
+  contact    Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  companyId  String?
+  company    Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  ownerId    String
+  owner      User          @relation(fields: [ownerId], references: [id])
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([stageId])
+  @@index([status])
+  @@index([ownerId])
+  @@index([pipelineId])
+}
+
+model WorkflowBoard {
+  id          String           @id @default(cuid())
+  name        String
+  description String?
+  columns     WorkflowColumn[]
+  cards       WorkflowCard[]
+}
+
+model WorkflowColumn {
+  id        String          @id @default(cuid())
+  boardId   String
+  board     WorkflowBoard   @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  name      String
+  sortOrder Int
+  color     String          @default("#0f766e")
+  cards     WorkflowCard[]
+
+  @@index([boardId, sortOrder])
+}
+
+model WorkflowCard {
+  id        String         @id @default(cuid())
+  boardId   String
+  board     WorkflowBoard  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  columnId  String
+  column    WorkflowColumn @relation(fields: [columnId], references: [id])
+  title     String
+  notes     String?
+  sortOrder Int            @default(0)
+  contactId String?
+  contact   Contact?       @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  companyId String?
+  company   Company?       @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  ownerId   String
+  owner     User           @relation(fields: [ownerId], references: [id])
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([boardId, columnId])
+  @@index([columnId])
+}
