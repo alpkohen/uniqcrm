@@ -29,7 +29,7 @@ export default async function CompaniesPage({
       <PageHeader
         title="Firmalar"
         description="Kurumsal hesaplar ve bağlı kişiler."
-        actions={<Button render={<Link href="/companies/new" />}>Yeni firma</Button>}
+        actions={<Button render={<Link href="/companies/new" />} nativeButton={false}>Yeni firma</Button>}
       />
       <form className="mb-4 flex gap-2">
         <input name="q" defaultValue={query} placeholder="Firma, şehir, sektör…" className="field-input max-w-sm" />

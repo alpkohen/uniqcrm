@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import { deleteDealAttachmentFile, saveDealAttachment } from "@/lib/storage";
 
 function str(formData: FormData, key: string) {
   const value = String(formData.get(key) ?? "").trim();
@@ -59,6 +60,77 @@ export async function deleteDeal(dealId: string) {
   await prisma.deal.delete({ where: { id: dealId } });
   revalidatePath("/deals");
   revalidatePath("/");
+}
+
+export async function updateDeal(dealId: string, formData: FormData) {
+  await requireUser();
+  const title = str(formData, "title");
+  const stageId = str(formData, "stageId");
+  if (!title || !stageId) throw new Error("Başlık ve aşama gerekli.");
+
+  const stage = await prisma.pipelineStage.findUnique({ where: { id: stageId } });
+  const status = stage?.isWon ? "WON" : stage?.isLost ? "LOST" : "OPEN";
+  const amount = Number(formData.get("amount") ?? 0) || 0;
+
+  await prisma.deal.update({
+    where: { id: dealId },
+    data: {
+      title,
+      amount,
+      stageId,
+      status,
+      pipelineId: stage?.pipelineId,
+      contactId: str(formData, "contactId"),
+      companyId: str(formData, "companyId"),
+      ownerId: str(formData, "ownerId") ?? undefined,
+    },
+  });
+
+  revalidatePath(`/deals/${dealId}`);
+  revalidatePath("/deals");
+  revalidatePath("/");
+}
+
+const ALLOWED_ATTACHMENT_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+const MAX_ATTACHMENT_SIZE = 15 * 1024 * 1024;
+
+export async function uploadDealAttachment(dealId: string, formData: FormData) {
+  const user = await requireUser();
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    throw new Error("Dosya seçilmedi.");
+  }
+  if (!ALLOWED_ATTACHMENT_TYPES.has(file.type)) {
+    throw new Error("Sadece PDF veya Word dosyaları yüklenebilir.");
+  }
+  if (file.size > MAX_ATTACHMENT_SIZE) {
+    throw new Error("Dosya 15 MB sınırını aşıyor.");
+  }
+
+  const storedName = await saveDealAttachment(dealId, file);
+  await prisma.dealAttachment.create({
+    data: {
+      dealId,
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      storedName,
+      uploadedById: user.id,
+    },
+  });
+
+  revalidatePath(`/deals/${dealId}`);
+}
+
+export async function deleteDealAttachment(attachmentId: string) {
+  await requireUser();
+  const attachment = await prisma.dealAttachment.delete({ where: { id: attachmentId } });
+  await deleteDealAttachmentFile(attachment.dealId, attachment.storedName);
+  revalidatePath(`/deals/${attachment.dealId}`);
 }
 
 export async function createWorkflowCard(boardId: string, formData: FormData) {

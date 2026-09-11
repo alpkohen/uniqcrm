@@ -68,7 +68,7 @@ export default async function ContactsPage({
         title="Kişiler"
         description={`${total.toLocaleString("tr-TR")} kayıt · arama ve sayfalama ~20.000 kişi için tasarlandı.`}
         actions={
-          <Button render={<Link href="/contacts/new" />}>Yeni kişi</Button>
+          <Button render={<Link href="/contacts/new" />} nativeButton={false}>Yeni kişi</Button>
         }
       />
 
@@ -107,7 +107,7 @@ export default async function ContactsPage({
           title="Kişi bulunamadı"
           description="Aramayı değiştirin veya Nimble dışa aktarımını İçe aktar ekranından yükleyin."
           action={
-            <Button render={<Link href="/contacts/new" />} variant="outline">
+            <Button render={<Link href="/contacts/new" />} variant="outline" nativeButton={false}>
               Kişi ekle
             </Button>
           }

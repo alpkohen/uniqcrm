@@ -63,6 +63,12 @@ export function isOverdue(date: Date, completedAt: Date | null) {
   return !completedAt && isPast(date) && !isToday(date);
 }
 
+export function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function thisWeekRange(now = new Date()) {
   return {
     start: startOfWeek(now, { weekStartsOn: 1 }),

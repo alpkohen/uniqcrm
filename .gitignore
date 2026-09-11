@@ -37,6 +37,12 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# netlify
+/.netlify
+
+# data migration dump (contains real contact PII)
+/prisma/data-dump.json
+
 # sqlite
 /prisma/*.db
 /prisma/*.db-journal

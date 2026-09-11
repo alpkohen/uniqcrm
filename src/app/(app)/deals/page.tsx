@@ -4,6 +4,7 @@ import { formatTry } from "@/lib/format";
 import { PageHeader } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { DealKanban } from "@/components/deal-kanban";
+import { StageManager } from "@/components/stage-manager";
 import { createDeal } from "@/actions/deals";
 
 export default async function DealsPage() {
@@ -51,6 +52,19 @@ export default async function DealsPage() {
       ) : (
         <p className="text-sm text-muted-foreground">Pipeline henüz yok. Seed çalıştırın.</p>
       )}
+
+      {pipeline ? (
+        <StageManager
+          pipelineId={pipeline.id}
+          stages={pipeline.stages.map((stage) => ({
+            id: stage.id,
+            name: stage.name,
+            isWon: stage.isWon,
+            isLost: stage.isLost,
+            dealCount: stage.deals.length,
+          }))}
+        />
+      ) : null}
 
       <section className="mt-8 rounded-xl border bg-card p-5">
         <h2 className="mb-4 text-sm font-medium">Yeni fırsat</h2>

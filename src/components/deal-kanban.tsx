@@ -31,7 +31,9 @@ export function DealKanban({
       }}
       renderCard={(deal) => (
         <div className="cursor-grab rounded-lg border bg-card p-3 shadow-sm active:cursor-grabbing">
-          <p className="text-sm font-medium leading-snug">{deal.title}</p>
+          <Link href={`/deals/${deal.id}`} className="text-sm font-medium leading-snug hover:underline">
+            {deal.title}
+          </Link>
           <p className="mt-1 text-sm text-primary">{formatTry(deal.amount)}</p>
           <p className="mt-2 text-xs text-muted-foreground">
             {deal.company ? (

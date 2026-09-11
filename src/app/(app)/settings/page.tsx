@@ -10,6 +10,7 @@ import {
   deleteCustomField,
   deleteTag,
 } from "@/actions/settings";
+import { createUser, deleteUser, resetUserPassword, updateUserRole } from "@/actions/users";
 
 export default async function SettingsPage() {
   const user = await requireUser();
@@ -30,16 +31,78 @@ export default async function SettingsPage() {
       <section className="rounded-xl border bg-card p-5">
         <h2 className="text-base font-medium">Kullanıcılar</h2>
         <ul className="mt-4 divide-y">
-          {users.map((item) => (
-            <li key={item.id} className="flex items-center justify-between py-2.5 text-sm">
-              <div>
-                <p className="font-medium">{item.name}</p>
-                <p className="text-xs text-muted-foreground">{item.email}</p>
-              </div>
-              <Badge variant="secondary">{roleLabel(item.role)}</Badge>
-            </li>
-          ))}
+          {users.map((item) => {
+            const setRole = updateUserRole.bind(null, item.id);
+            const resetPassword = resetUserPassword.bind(null, item.id);
+            const remove = deleteUser.bind(null, item.id);
+            return (
+              <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
+                <div>
+                  <p className="font-medium">{item.name}</p>
+                  <p className="text-xs text-muted-foreground">{item.email}</p>
+                </div>
+                {isAdmin ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <form action={setRole} className="flex items-center gap-1.5">
+                      <select name="role" defaultValue={item.role} className="field-select h-8 text-xs">
+                        <option value="ADMIN">Yönetici</option>
+                        <option value="MEMBER">Üye</option>
+                      </select>
+                      <Button type="submit" size="sm" variant="outline">
+                        Kaydet
+                      </Button>
+                    </form>
+                    <form action={resetPassword} className="flex items-center gap-1.5">
+                      <input
+                        name="password"
+                        type="password"
+                        placeholder="Yeni şifre"
+                        minLength={8}
+                        className="field-input h-8 w-32 text-xs"
+                      />
+                      <Button type="submit" size="sm" variant="outline">
+                        Şifre sıfırla
+                      </Button>
+                    </form>
+                    <form action={remove}>
+                      <Button type="submit" size="sm" variant="ghost">
+                        Sil
+                      </Button>
+                    </form>
+                  </div>
+                ) : (
+                  <Badge variant="secondary">{roleLabel(item.role)}</Badge>
+                )}
+              </li>
+            );
+          })}
         </ul>
+        {isAdmin ? (
+          <form action={createUser} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium">Ad soyad</span>
+              <input name="name" required className="field-input" />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium">E-posta</span>
+              <input name="email" type="email" required className="field-input" />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium">Şifre</span>
+              <input name="password" type="password" required minLength={8} className="field-input" />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium">Rol</span>
+              <select name="role" className="field-select" defaultValue="MEMBER">
+                <option value="MEMBER">Üye</option>
+                <option value="ADMIN">Yönetici</option>
+              </select>
+            </label>
+            <div className="sm:col-span-2 lg:col-span-4">
+              <Button type="submit">Kullanıcı ekle</Button>
+            </div>
+          </form>
+        ) : null}
       </section>
 
       <section className="rounded-xl border bg-card p-5">
