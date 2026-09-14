@@ -1,35 +1,55 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { PageHeader, EmptyState } from "@/components/ui-helpers";
+import { PAGE_SIZE } from "@/lib/constants";
+import { buildCompanyWhere } from "@/lib/company-filters";
+import { PageHeader, Pagination, EmptyState } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
 
 export default async function CompaniesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q = "" } = await searchParams;
-  const query = q.trim();
-  const companies = await prisma.company.findMany({
-    where: query
-      ? {
-          OR: [
-            { name: { contains: query } },
-            { city: { contains: query } },
-            { sector: { contains: query } },
-          ],
-        }
-      : undefined,
-    include: { owner: true, _count: { select: { contacts: true, deals: true } } },
-    orderBy: { name: "asc" },
-  });
+  const params = await searchParams;
+  const query = params.q?.trim() ?? "";
+  const page = Math.max(1, Number(params.page ?? 1) || 1);
+  const where = buildCompanyWhere(query);
+
+  const [total, companies] = await Promise.all([
+    prisma.company.count({ where }),
+    prisma.company.findMany({
+      where,
+      include: {
+        owner: { select: { name: true } },
+        _count: { select: { contacts: true, deals: true } },
+      },
+      orderBy: { name: "asc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+  ]);
+
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const exportQuery = new URLSearchParams();
+  if (query) exportQuery.set("q", query);
 
   return (
     <div>
       <PageHeader
         title="Firmalar"
         description="Kurumsal hesaplar ve bağlı kişiler."
-        actions={<Button render={<Link href="/companies/new" />} nativeButton={false}>Yeni firma</Button>}
+        actions={
+          <>
+            <Button
+              render={<a href={`/api/companies/export?${exportQuery.toString()}`} />}
+              variant="outline"
+              nativeButton={false}
+            >
+              Dışa aktar
+            </Button>
+            <Button render={<Link href="/companies/new" />} nativeButton={false}>Yeni firma</Button>
+          </>
+        }
       />
       <form className="mb-4 flex gap-2">
         <input name="q" defaultValue={query} placeholder="Firma, şehir, sektör…" className="field-input max-w-sm" />
@@ -72,6 +92,16 @@ export default async function CompaniesPage({
           </table>
         </div>
       )}
+
+      <Pagination
+        page={page}
+        pageCount={pageCount}
+        hrefFor={(next) => {
+          const nextQuery = new URLSearchParams(exportQuery);
+          nextQuery.set("page", String(next));
+          return `/companies?${nextQuery.toString()}`;
+        }}
+      />
     </div>
   );
 }

@@ -1,13 +1,21 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { formatTry } from "@/lib/format";
 import { PageHeader } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { DealKanban } from "@/components/deal-kanban";
+import { DealList } from "@/components/deal-list";
 import { StageManager } from "@/components/stage-manager";
 import { createDeal } from "@/actions/deals";
 
-export default async function DealsPage() {
+export default async function DealsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const { view } = await searchParams;
+  const isListView = view === "list";
   const user = await requireUser();
   const pipeline = await prisma.pipeline.findFirst({
     include: {
@@ -37,18 +45,51 @@ export default async function DealsPage() {
     <div>
       <PageHeader
         title={pipeline?.name ?? "Fırsatlar"}
-        description={`Açık pipeline ${formatTry(openTotal)} · kartı sürükleyerek aşama değiştirin.`}
+        description={
+          isListView
+            ? `Açık pipeline ${formatTry(openTotal)}`
+            : `Açık pipeline ${formatTry(openTotal)} · kartı sürükleyerek aşama değiştirin.`
+        }
+        actions={
+          <>
+            <div className="flex overflow-hidden rounded-lg border text-sm">
+              <Link
+                href="/deals"
+                className={`px-3 py-1.5 ${!isListView ? "bg-muted font-medium" : "hover:bg-muted/50"}`}
+              >
+                Pipeline
+              </Link>
+              <Link
+                href="/deals?view=list"
+                className={`border-l px-3 py-1.5 ${isListView ? "bg-muted font-medium" : "hover:bg-muted/50"}`}
+              >
+                Liste
+              </Link>
+            </div>
+            <Button render={<a href="/api/deals/export" />} variant="outline" nativeButton={false}>
+              Dışa aktar
+            </Button>
+          </>
+        }
       />
 
       {pipeline ? (
-        <DealKanban
-          columns={pipeline.stages.map((stage) => ({
-            id: stage.id,
-            name: stage.name,
-            color: stage.color,
-            items: stage.deals,
-          }))}
-        />
+        isListView ? (
+          <DealList
+            deals={pipeline.stages.flatMap((stage) =>
+              stage.deals.map((deal) => ({ ...deal, stage: { name: stage.name } })),
+            )}
+          />
+        ) : (
+          <DealKanban
+            columns={pipeline.stages.map((stage) => ({
+              id: stage.id,
+              name: stage.name,
+              color: stage.color,
+              items: stage.deals,
+            }))}
+          />
+        )
       ) : (
         <p className="text-sm text-muted-foreground">Pipeline henüz yok. Seed çalıştırın.</p>
       )}

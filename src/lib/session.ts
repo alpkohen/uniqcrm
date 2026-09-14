@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE } from "@/lib/constants";
@@ -34,14 +35,17 @@ export async function getSession() {
   return decryptSession(cookieStore.get(SESSION_COOKIE)?.value);
 }
 
-export async function getCurrentUser() {
+// Most pages call requireUser() again on top of the shared (app) layout's
+// own call — cache() dedupes that to a single DB round trip per request
+// instead of running it twice on every navigation.
+export const getCurrentUser = cache(async function getCurrentUser() {
   const session = await getSession();
   if (!session?.userId) return null;
   return prisma.user.findUnique({
     where: { id: session.userId },
     select: { id: true, name: true, email: true, role: true },
   });
-}
+});
 
 export async function requireUser() {
   const user = await getCurrentUser();

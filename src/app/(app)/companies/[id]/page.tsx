@@ -3,16 +3,18 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { formatTry, fullName } from "@/lib/format";
+import { listDistinctSectors } from "@/lib/sectors";
 import { PageHeader } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { deleteCompany, updateCompany } from "@/actions/companies";
+import { createDeal } from "@/actions/deals";
 
 export default async function CompanyDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireUser();
+  const currentUser = await requireUser();
   const { id } = await params;
   const company = await prisma.company.findUnique({
     where: { id },
@@ -23,7 +25,11 @@ export default async function CompanyDetailPage({
     },
   });
   if (!company) notFound();
-  const users = await prisma.user.findMany({ orderBy: { name: "asc" } });
+  const [users, sectors, pipeline] = await Promise.all([
+    prisma.user.findMany({ orderBy: { name: "asc" } }),
+    listDistinctSectors(),
+    prisma.pipeline.findFirst({ include: { stages: { orderBy: { sortOrder: "asc" } } } }),
+  ]);
   const update = updateCompany.bind(null, company.id);
   const remove = deleteCompany.bind(null, company.id);
 
@@ -60,7 +66,19 @@ export default async function CompanyDetailPage({
           </label>
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">Sektör</span>
-            <input name="sector" defaultValue={company.sector ?? ""} className="field-input" />
+            <input
+              name="sector"
+              list="sector-options"
+              required
+              defaultValue={company.sector ?? ""}
+              placeholder="Sektör seçin veya yazın"
+              className="field-input"
+            />
+            <datalist id="sector-options">
+              {sectors.map((sector) => (
+                <option key={sector} value={sector} />
+              ))}
+            </datalist>
           </label>
           <label className="grid gap-1.5 text-sm sm:col-span-2">
             <span className="font-medium">Sahip</span>
@@ -109,6 +127,59 @@ export default async function CompanyDetailPage({
                 <li className="text-muted-foreground">Fırsat yok.</li>
               ) : null}
             </ul>
+
+            {pipeline ? (
+              <form action={createDeal} className="mt-4 grid gap-3 border-t pt-4">
+                <input type="hidden" name="pipelineId" value={pipeline.id} />
+                <input type="hidden" name="companyId" value={company.id} />
+                <label className="grid gap-1.5 text-sm">
+                  <span className="font-medium">Başlık</span>
+                  <input name="title" required className="field-input" placeholder="Fırsat başlığı" />
+                </label>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="grid gap-1.5 text-sm">
+                    <span className="font-medium">Tutar (TRY)</span>
+                    <input name="amount" type="number" min="0" defaultValue={0} className="field-input" />
+                  </label>
+                  <label className="grid gap-1.5 text-sm">
+                    <span className="font-medium">Aşama</span>
+                    <select name="stageId" className="field-select" defaultValue={pipeline.stages[0]?.id}>
+                      {pipeline.stages.map((stage) => (
+                        <option key={stage.id} value={stage.id}>
+                          {stage.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-1.5 text-sm">
+                    <span className="font-medium">Kişi</span>
+                    <select name="contactId" className="field-select" defaultValue="">
+                      <option value="">—</option>
+                      {company.contacts.map((contact) => (
+                        <option key={contact.id} value={contact.id}>
+                          {fullName(contact.firstName, contact.lastName)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-1.5 text-sm">
+                    <span className="font-medium">Sahip</span>
+                    <select name="ownerId" defaultValue={currentUser.id} className="field-select">
+                      {users.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div>
+                  <Button type="submit" variant="outline">
+                    Fırsat ekle
+                  </Button>
+                </div>
+              </form>
+            ) : null}
           </section>
         </div>
       </div>

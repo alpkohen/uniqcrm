@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { PAGE_SIZE } from "@/lib/constants";
 import { fullName } from "@/lib/format";
+import { buildContactWhere } from "@/lib/contact-filters";
 import { PageHeader, Pagination, EmptyState } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,33 +23,16 @@ export default async function ContactsPage({
     prisma.user.findMany({ orderBy: { name: "asc" } }),
   ]);
 
-  const where = {
-    AND: [
-      q
-        ? {
-            OR: [
-              { firstName: { contains: q } },
-              { lastName: { contains: q } },
-              { email: { contains: q } },
-              { phone: { contains: q } },
-              { title: { contains: q } },
-              { company: { name: { contains: q } } },
-            ],
-          }
-        : {},
-      tag ? { tags: { some: { tagId: tag } } } : {},
-      owner ? { ownerId: owner } : {},
-    ],
-  };
+  const where = buildContactWhere({ q, tag, owner });
 
   const [total, contacts] = await Promise.all([
     prisma.contact.count({ where }),
     prisma.contact.findMany({
       where,
       include: {
-        company: true,
-        owner: true,
-        tags: { include: { tag: true } },
+        company: { select: { id: true, name: true } },
+        owner: { select: { name: true } },
+        tags: { include: { tag: { select: { id: true, name: true } } } },
       },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       skip: (page - 1) * PAGE_SIZE,
@@ -68,7 +52,16 @@ export default async function ContactsPage({
         title="Kişiler"
         description={`${total.toLocaleString("tr-TR")} kayıt · arama ve sayfalama ~20.000 kişi için tasarlandı.`}
         actions={
-          <Button render={<Link href="/contacts/new" />} nativeButton={false}>Yeni kişi</Button>
+          <>
+            <Button
+              render={<a href={`/api/contacts/export?${query.toString()}`} />}
+              variant="outline"
+              nativeButton={false}
+            >
+              Dışa aktar
+            </Button>
+            <Button render={<Link href="/contacts/new" />} nativeButton={false}>Yeni kişi</Button>
+          </>
         }
       />
 

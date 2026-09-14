@@ -1,12 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { createCompany } from "@/actions/companies";
+import { listDistinctSectors } from "@/lib/sectors";
 import { PageHeader } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
 
 export default async function NewCompanyPage() {
   const user = await requireUser();
-  const users = await prisma.user.findMany({ orderBy: { name: "asc" } });
+  const [users, sectors] = await Promise.all([
+    prisma.user.findMany({ orderBy: { name: "asc" } }),
+    listDistinctSectors(),
+  ]);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -30,7 +34,18 @@ export default async function NewCompanyPage() {
         </label>
         <label className="grid gap-1.5 text-sm">
           <span className="font-medium">Sektör</span>
-          <input name="sector" className="field-input" />
+          <input
+            name="sector"
+            list="sector-options"
+            required
+            placeholder="Sektör seçin veya yazın"
+            className="field-input"
+          />
+          <datalist id="sector-options">
+            {sectors.map((sector) => (
+              <option key={sector} value={sector} />
+            ))}
+          </datalist>
         </label>
         <label className="grid gap-1.5 text-sm sm:col-span-2">
           <span className="font-medium">Sahip</span>

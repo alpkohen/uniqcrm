@@ -14,6 +14,8 @@ export async function createCompany(formData: FormData) {
   const user = await requireUser();
   const name = str(formData, "name");
   if (!name) throw new Error("Firma adı gerekli.");
+  const sector = str(formData, "sector");
+  if (!sector) throw new Error("Sektör gerekli.");
 
   const company = await prisma.company.create({
     data: {
@@ -21,7 +23,7 @@ export async function createCompany(formData: FormData) {
       website: str(formData, "website"),
       phone: str(formData, "phone"),
       city: str(formData, "city"),
-      sector: str(formData, "sector"),
+      sector,
       notes: str(formData, "notes"),
       ownerId: str(formData, "ownerId") ?? user.id,
     },
@@ -35,6 +37,8 @@ export async function updateCompany(companyId: string, formData: FormData) {
   const user = await requireUser();
   const name = str(formData, "name");
   if (!name) throw new Error("Firma adı gerekli.");
+  const sector = str(formData, "sector");
+  if (!sector) throw new Error("Sektör gerekli.");
 
   await prisma.company.update({
     where: { id: companyId },
@@ -43,7 +47,7 @@ export async function updateCompany(companyId: string, formData: FormData) {
       website: str(formData, "website"),
       phone: str(formData, "phone"),
       city: str(formData, "city"),
-      sector: str(formData, "sector"),
+      sector,
       notes: str(formData, "notes"),
       ownerId: str(formData, "ownerId") ?? user.id,
     },
