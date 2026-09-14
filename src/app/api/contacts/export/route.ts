@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { buildContactWhere } from "@/lib/contact-filters";
 import { fullName } from "@/lib/format";
-import { csvResponse, todayStamp } from "@/lib/csv";
+import { xlsxResponse, todayStamp } from "@/lib/export";
 
 export async function GET(request: Request) {
   await requireUser();
@@ -33,5 +33,5 @@ export async function GET(request: Request) {
     Sahip: contact.owner.name,
   }));
 
-  return csvResponse(`kisiler-${todayStamp()}.csv`, rows);
+  return xlsxResponse(`kisiler-${todayStamp()}.xlsx`, "Kişiler", rows);
 }

@@ -35,11 +35,21 @@ export async function createContact(formData: FormData) {
     throw new Error("Ad ve soyad gerekli.");
   }
 
+  const email = str(formData, "email");
+  if (email) {
+    const existing = await prisma.contact.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
+    });
+    if (existing) {
+      throw new Error(`Bu e-posta ile kayıtlı bir kişi zaten var: ${existing.firstName} ${existing.lastName}`);
+    }
+  }
+
   const contact = await prisma.contact.create({
     data: {
       firstName,
       lastName,
-      email: str(formData, "email"),
+      email,
       phone: str(formData, "phone"),
       title: str(formData, "title"),
       city: str(formData, "city"),
@@ -64,6 +74,16 @@ export async function updateContact(contactId: string, formData: FormData) {
     throw new Error("Ad ve soyad gerekli.");
   }
 
+  const email = str(formData, "email");
+  if (email) {
+    const existing = await prisma.contact.findFirst({
+      where: { email: { equals: email, mode: "insensitive" }, id: { not: contactId } },
+    });
+    if (existing) {
+      throw new Error(`Bu e-posta ile kayıtlı bir kişi zaten var: ${existing.firstName} ${existing.lastName}`);
+    }
+  }
+
   const tagIds = await tagIdsFromForm(formData);
 
   await prisma.$transaction([
@@ -73,7 +93,7 @@ export async function updateContact(contactId: string, formData: FormData) {
       data: {
         firstName,
         lastName,
-        email: str(formData, "email"),
+        email,
         phone: str(formData, "phone"),
         title: str(formData, "title"),
         city: str(formData, "city"),

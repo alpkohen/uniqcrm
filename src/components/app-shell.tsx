@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   Building2,
   Calendar,
   Import,
@@ -23,6 +24,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { GlobalSearch } from "@/components/global-search";
 import { logoutAction } from "@/actions/auth";
 import { cn } from "cn";
 
@@ -34,6 +36,7 @@ const NAV = [
   { href: "/workflows", label: "İş akışları", icon: Kanban },
   { href: "/tasks", label: "Görevler", icon: ListTodo },
   { href: "/meetings", label: "Toplantılar", icon: Calendar },
+  { href: "/reports", label: "Raporlar", icon: BarChart3 },
   { href: "/import", label: "İçe aktar", icon: Import },
   { href: "/settings", label: "Ayarlar", icon: Settings },
 ];
@@ -85,6 +88,9 @@ export function AppShell({
           </p>
           <p className="mt-1 text-lg font-semibold tracking-tight">CRM / SFA</p>
         </div>
+        <div className="px-3 pb-3">
+          <GlobalSearch />
+        </div>
         <div className="flex-1 px-3">
           <NavLinks />
         </div>
@@ -119,6 +125,9 @@ export function AppShell({
               <SheetHeader>
                 <SheetTitle className="text-sidebar-foreground">Menü</SheetTitle>
               </SheetHeader>
+              <div className="px-3 pb-3">
+                <GlobalSearch />
+              </div>
               <div className="px-3">
                 <NavLinks />
               </div>

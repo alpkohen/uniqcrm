@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
-import { csvResponse, todayStamp } from "@/lib/csv";
+import { xlsxResponse, todayStamp } from "@/lib/export";
 import { dealStatusLabel, fullName } from "@/lib/format";
 
 export async function GET() {
@@ -27,5 +27,5 @@ export async function GET() {
     Sahip: deal.owner.name,
   }));
 
-  return csvResponse(`firsatlar-${todayStamp()}.csv`, rows);
+  return xlsxResponse(`firsatlar-${todayStamp()}.xlsx`, "Fırsatlar", rows);
 }

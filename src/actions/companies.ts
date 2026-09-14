@@ -17,6 +17,13 @@ export async function createCompany(formData: FormData) {
   const sector = str(formData, "sector");
   if (!sector) throw new Error("Sektör gerekli.");
 
+  const existing = await prisma.company.findFirst({
+    where: { name: { equals: name, mode: "insensitive" } },
+  });
+  if (existing) {
+    throw new Error(`Bu isimde bir firma zaten var: ${existing.name}`);
+  }
+
   const company = await prisma.company.create({
     data: {
       name,
@@ -39,6 +46,13 @@ export async function updateCompany(companyId: string, formData: FormData) {
   if (!name) throw new Error("Firma adı gerekli.");
   const sector = str(formData, "sector");
   if (!sector) throw new Error("Sektör gerekli.");
+
+  const existing = await prisma.company.findFirst({
+    where: { name: { equals: name, mode: "insensitive" }, id: { not: companyId } },
+  });
+  if (existing) {
+    throw new Error(`Bu isimde bir firma zaten var: ${existing.name}`);
+  }
 
   await prisma.company.update({
     where: { id: companyId },

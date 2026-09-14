@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { buildCompanyWhere } from "@/lib/company-filters";
-import { csvResponse, todayStamp } from "@/lib/csv";
+import { xlsxResponse, todayStamp } from "@/lib/export";
 
 export async function GET(request: Request) {
   await requireUser();
@@ -30,5 +30,5 @@ export async function GET(request: Request) {
     Notlar: company.notes ?? "",
   }));
 
-  return csvResponse(`firmalar-${todayStamp()}.csv`, rows);
+  return xlsxResponse(`firmalar-${todayStamp()}.xlsx`, "Firmalar", rows);
 }
