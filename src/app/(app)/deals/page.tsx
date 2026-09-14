@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DealKanban } from "@/components/deal-kanban";
 import { DealList } from "@/components/deal-list";
 import { StageManager } from "@/components/stage-manager";
+import { SearchSelect } from "@/components/search-select";
 import { createDeal } from "@/actions/deals";
 
 export default async function DealsPage({
@@ -30,11 +31,7 @@ export default async function DealsPage({
       },
     },
   });
-  const [users, companies, contacts] = await Promise.all([
-    prisma.user.findMany({ orderBy: { name: "asc" } }),
-    prisma.company.findMany({ orderBy: { name: "asc" } }),
-    prisma.contact.findMany({ orderBy: [{ lastName: "asc" }, { firstName: "asc" }] }),
-  ]);
+  const users = await prisma.user.findMany({ orderBy: { name: "asc" } });
 
   const openTotal =
     pipeline?.stages
@@ -131,25 +128,11 @@ export default async function DealsPage({
           </label>
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">Firma</span>
-            <select name="companyId" className="field-select" defaultValue="">
-              <option value="">—</option>
-              {companies.map((company) => (
-                <option key={company.id} value={company.id}>
-                  {company.name}
-                </option>
-              ))}
-            </select>
+            <SearchSelect name="companyId" searchUrl="/api/companies/search" placeholder="Firma ara..." />
           </label>
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">Kişi</span>
-            <select name="contactId" className="field-select" defaultValue="">
-              <option value="">—</option>
-              {contacts.map((contact) => (
-                <option key={contact.id} value={contact.id}>
-                  {contact.firstName} {contact.lastName}
-                </option>
-              ))}
-            </select>
+            <SearchSelect name="contactId" searchUrl="/api/contacts/search" placeholder="Kişi ara..." />
           </label>
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">Sahip</span>

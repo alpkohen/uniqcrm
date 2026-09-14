@@ -77,9 +77,22 @@ export function KanbanBoard<T extends { id: string }>({
   onMove: (itemId: string, columnId: string) => Promise<void>;
   renderCard: (item: T) => ReactNode;
 }) {
+  // Mirrors `columns` locally so a drop can move the card instantly, before the
+  // server round trip (onMove) resolves — otherwise the card just snaps back
+  // and sits there for however long the mutation + refresh takes, which reads
+  // as "nothing happened." Re-synced (during render, not an effect — see
+  // https://react.dev/learn/you-might-not-need-an-effect) whenever the server
+  // sends fresh columns.
+  const [prevColumns, setPrevColumns] = useState(columns);
+  const [localColumns, setLocalColumns] = useState(columns);
+  if (columns !== prevColumns) {
+    setPrevColumns(columns);
+    setLocalColumns(columns);
+  }
+
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-  const activeItem = columns.flatMap((column) => column.items).find((item) => item.id === activeId);
+  const activeItem = localColumns.flatMap((column) => column.items).find((item) => item.id === activeId);
 
   async function handleDragEnd(event: DragEndEvent) {
     setActiveId(null);
@@ -88,13 +101,31 @@ export function KanbanBoard<T extends { id: string }>({
     const overId = String(over.id);
     const targetColumnId = overId.startsWith("column:")
       ? overId.slice("column:".length)
-      : columns.find((column) => column.items.some((item) => item.id === overId))?.id;
+      : localColumns.find((column) => column.items.some((item) => item.id === overId))?.id;
     if (!targetColumnId) return;
-    const sourceColumn = columns.find((column) =>
-      column.items.some((item) => item.id === String(active.id))
+    const itemId = String(active.id);
+    const sourceColumn = localColumns.find((column) => column.items.some((item) => item.id === itemId));
+    if (!sourceColumn || sourceColumn.id === targetColumnId) return;
+
+    const item = sourceColumn.items.find((entry) => entry.id === itemId)!;
+    const previousColumns = localColumns;
+    setLocalColumns((prev) =>
+      prev.map((column) => {
+        if (column.id === sourceColumn.id) {
+          return { ...column, items: column.items.filter((entry) => entry.id !== itemId) };
+        }
+        if (column.id === targetColumnId) {
+          return { ...column, items: [item, ...column.items] };
+        }
+        return column;
+      }),
     );
-    if (sourceColumn?.id === targetColumnId) return;
-    await onMove(String(active.id), targetColumnId);
+
+    try {
+      await onMove(itemId, targetColumnId);
+    } catch {
+      setLocalColumns(previousColumns);
+    }
   }
 
   return (
@@ -106,7 +137,7 @@ export function KanbanBoard<T extends { id: string }>({
       onDragCancel={() => setActiveId(null)}
     >
       <div className="flex min-h-[28rem] gap-3 overflow-x-auto pb-4">
-        {columns.map((column) => (
+        {localColumns.map((column) => (
           <DroppableColumn
             key={column.id}
             id={column.id}

@@ -7,9 +7,8 @@ import { createContact } from "@/actions/contacts";
 
 export default async function NewContactPage() {
   const user = await requireUser();
-  const [users, companies, tags, fields] = await Promise.all([
+  const [users, tags, fields] = await Promise.all([
     prisma.user.findMany({ orderBy: { name: "asc" } }),
-    prisma.company.findMany({ orderBy: { name: "asc" } }),
     prisma.tag.findMany({ orderBy: { name: "asc" } }),
     prisma.customField.findMany({ orderBy: { sortOrder: "asc" } }),
   ]);
@@ -20,7 +19,6 @@ export default async function NewContactPage() {
       <form action={createContact} className="rounded-xl border bg-card p-5">
         <ContactFields
           users={users}
-          companies={companies}
           tags={tags}
           fields={fields}
           values={{ ownerId: user.id }}

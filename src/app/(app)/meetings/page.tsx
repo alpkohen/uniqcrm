@@ -4,12 +4,13 @@ import { requireUser } from "@/lib/session";
 import { formatDateTime, fullName } from "@/lib/format";
 import { PageHeader } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
+import { SearchSelect } from "@/components/search-select";
 import { createMeeting, deleteMeeting } from "@/actions/activities";
 
 export default async function MeetingsPage() {
   const user = await requireUser();
   const now = new Date();
-  const [upcoming, past, users, contacts] = await Promise.all([
+  const [upcoming, past, users] = await Promise.all([
     prisma.meeting.findMany({
       where: { startsAt: { gte: now } },
       include: { owner: true, contact: true },
@@ -22,7 +23,6 @@ export default async function MeetingsPage() {
       take: 8,
     }),
     prisma.user.findMany({ orderBy: { name: "asc" } }),
-    prisma.contact.findMany({ orderBy: [{ lastName: "asc" }, { firstName: "asc" }] }),
   ]);
 
   return (
@@ -102,14 +102,7 @@ export default async function MeetingsPage() {
           </label>
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">Kişi</span>
-            <select name="contactId" className="field-select" defaultValue="">
-              <option value="">—</option>
-              {contacts.map((contact) => (
-                <option key={contact.id} value={contact.id}>
-                  {contact.firstName} {contact.lastName}
-                </option>
-              ))}
-            </select>
+            <SearchSelect name="contactId" searchUrl="/api/contacts/search" placeholder="Kişi ara..." />
           </label>
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">Sahip</span>

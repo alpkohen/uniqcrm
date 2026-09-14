@@ -1,14 +1,13 @@
-import type { CustomField, Tag, User, Company } from "@prisma/client";
+import type { CustomField, Tag, User } from "@prisma/client";
+import { SearchSelect } from "@/components/search-select";
 
 export function ContactFields({
   users,
-  companies,
   tags,
   fields,
   values,
 }: {
   users: Pick<User, "id" | "name">[];
-  companies: Pick<Company, "id" | "name">[];
   tags: Tag[];
   fields: CustomField[];
   values?: {
@@ -19,6 +18,7 @@ export function ContactFields({
     title?: string | null;
     city?: string | null;
     companyId?: string | null;
+    companyName?: string | null;
     ownerId?: string;
     tagIds?: string[];
     customData?: Record<string, string>;
@@ -53,14 +53,16 @@ export function ContactFields({
       </label>
       <label className="grid gap-1.5 text-sm">
         <span className="font-medium">Firma</span>
-        <select name="companyId" defaultValue={values?.companyId ?? ""} className="field-select">
-          <option value="">—</option>
-          {companies.map((company) => (
-            <option key={company.id} value={company.id}>
-              {company.name}
-            </option>
-          ))}
-        </select>
+        <SearchSelect
+          name="companyId"
+          searchUrl="/api/companies/search"
+          placeholder="Firma ara..."
+          defaultValue={
+            values?.companyId && values?.companyName
+              ? { id: values.companyId, label: values.companyName }
+              : null
+          }
+        />
       </label>
       <label className="grid gap-1.5 text-sm">
         <span className="font-medium">Sahip</span>

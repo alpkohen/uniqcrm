@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/session";
 import { formatDateTime, formatFileSize, formatTry, fullName } from "@/lib/format";
 import { PageHeader } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
+import { SearchSelect } from "@/components/search-select";
 import {
   deleteDeal,
   deleteDealAttachment,
@@ -32,11 +33,7 @@ export default async function DealDetailPage({
   });
   if (!deal) notFound();
 
-  const [users, companies, contacts] = await Promise.all([
-    prisma.user.findMany({ orderBy: { name: "asc" } }),
-    prisma.company.findMany({ orderBy: { name: "asc" } }),
-    prisma.contact.findMany({ orderBy: [{ lastName: "asc" }, { firstName: "asc" }] }),
-  ]);
+  const users = await prisma.user.findMany({ orderBy: { name: "asc" } });
 
   const update = updateDeal.bind(null, deal.id);
   const remove = deleteDeal.bind(null, deal.id);
@@ -90,25 +87,25 @@ export default async function DealDetailPage({
           </label>
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">Firma</span>
-            <select name="companyId" defaultValue={deal.companyId ?? ""} className="field-select">
-              <option value="">—</option>
-              {companies.map((company) => (
-                <option key={company.id} value={company.id}>
-                  {company.name}
-                </option>
-              ))}
-            </select>
+            <SearchSelect
+              name="companyId"
+              searchUrl="/api/companies/search"
+              placeholder="Firma ara..."
+              defaultValue={deal.company ? { id: deal.company.id, label: deal.company.name } : null}
+            />
           </label>
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">Kişi</span>
-            <select name="contactId" defaultValue={deal.contactId ?? ""} className="field-select">
-              <option value="">—</option>
-              {contacts.map((contact) => (
-                <option key={contact.id} value={contact.id}>
-                  {fullName(contact.firstName, contact.lastName)}
-                </option>
-              ))}
-            </select>
+            <SearchSelect
+              name="contactId"
+              searchUrl="/api/contacts/search"
+              placeholder="Kişi ara..."
+              defaultValue={
+                deal.contact
+                  ? { id: deal.contact.id, label: fullName(deal.contact.firstName, deal.contact.lastName) }
+                  : null
+              }
+            />
           </label>
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">Sahip</span>

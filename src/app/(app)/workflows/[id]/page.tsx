@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { PageHeader } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
+import { SearchSelect } from "@/components/search-select";
 import { WorkflowKanban } from "@/components/workflow-kanban";
 import { createWorkflowCard } from "@/actions/deals";
 
@@ -29,11 +30,7 @@ export default async function WorkflowBoardPage({
   });
   if (!board) notFound();
 
-  const [contacts, companies, users] = await Promise.all([
-    prisma.contact.findMany({ orderBy: [{ lastName: "asc" }, { firstName: "asc" }] }),
-    prisma.company.findMany({ orderBy: { name: "asc" } }),
-    prisma.user.findMany({ orderBy: { name: "asc" } }),
-  ]);
+  const users = await prisma.user.findMany({ orderBy: { name: "asc" } });
 
   const addCard = createWorkflowCard.bind(null, board.id);
 
@@ -67,25 +64,11 @@ export default async function WorkflowBoardPage({
           </label>
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">Kişi</span>
-            <select name="contactId" className="field-select" defaultValue="">
-              <option value="">—</option>
-              {contacts.map((contact) => (
-                <option key={contact.id} value={contact.id}>
-                  {contact.firstName} {contact.lastName}
-                </option>
-              ))}
-            </select>
+            <SearchSelect name="contactId" searchUrl="/api/contacts/search" placeholder="Kişi ara..." />
           </label>
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">Firma</span>
-            <select name="companyId" className="field-select" defaultValue="">
-              <option value="">—</option>
-              {companies.map((company) => (
-                <option key={company.id} value={company.id}>
-                  {company.name}
-                </option>
-              ))}
-            </select>
+            <SearchSelect name="companyId" searchUrl="/api/companies/search" placeholder="Firma ara..." />
           </label>
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">Sahip</span>

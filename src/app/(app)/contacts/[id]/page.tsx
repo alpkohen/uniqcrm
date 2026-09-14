@@ -30,9 +30,8 @@ export default async function ContactDetailPage({
   });
   if (!contact) notFound();
 
-  const [users, companies, tags, fields] = await Promise.all([
+  const [users, tags, fields] = await Promise.all([
     prisma.user.findMany({ orderBy: { name: "asc" } }),
-    prisma.company.findMany({ orderBy: { name: "asc" } }),
     prisma.tag.findMany({ orderBy: { name: "asc" } }),
     prisma.customField.findMany({ orderBy: { sortOrder: "asc" } }),
   ]);
@@ -75,7 +74,6 @@ export default async function ContactDetailPage({
           <h2 className="mb-4 text-sm font-medium text-muted-foreground">Kart</h2>
           <ContactFields
             users={users}
-            companies={companies}
             tags={tags}
             fields={fields}
             values={{
@@ -86,6 +84,7 @@ export default async function ContactDetailPage({
               title: contact.title,
               city: contact.city,
               companyId: contact.companyId,
+              companyName: contact.company?.name,
               ownerId: contact.ownerId,
               tagIds: contact.tags.map((item) => item.tagId),
               customData,

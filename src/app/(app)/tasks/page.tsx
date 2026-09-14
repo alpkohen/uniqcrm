@@ -4,18 +4,18 @@ import { requireUser } from "@/lib/session";
 import { formatDateTime, fullName, isOverdue } from "@/lib/format";
 import { PageHeader } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
+import { SearchSelect } from "@/components/search-select";
 import { createTask, toggleTask } from "@/actions/activities";
 import { cn } from "cn";
 
 export default async function TasksPage() {
   const user = await requireUser();
-  const [tasks, users, contacts] = await Promise.all([
+  const [tasks, users] = await Promise.all([
     prisma.task.findMany({
       include: { owner: true, contact: true },
       orderBy: [{ completedAt: "asc" }, { dueAt: "asc" }],
     }),
     prisma.user.findMany({ orderBy: { name: "asc" } }),
-    prisma.contact.findMany({ orderBy: [{ lastName: "asc" }, { firstName: "asc" }] }),
   ]);
 
   const overdue = tasks.filter((task) => isOverdue(task.dueAt, task.completedAt));
@@ -122,14 +122,7 @@ export default async function TasksPage() {
           </label>
           <label className="grid gap-1.5 text-sm sm:col-span-2">
             <span className="font-medium">Kişi</span>
-            <select name="contactId" className="field-select" defaultValue="">
-              <option value="">—</option>
-              {contacts.map((contact) => (
-                <option key={contact.id} value={contact.id}>
-                  {contact.firstName} {contact.lastName}
-                </option>
-              ))}
-            </select>
+            <SearchSelect name="contactId" searchUrl="/api/contacts/search" placeholder="Kişi ara..." />
           </label>
           <label className="grid gap-1.5 text-sm sm:col-span-2">
             <span className="font-medium">Açıklama</span>
