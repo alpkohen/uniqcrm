@@ -17,24 +17,23 @@ export default async function ContactDetailPage({
 }) {
   await requireUser();
   const { id } = await params;
-  const contact = await prisma.contact.findUnique({
-    where: { id },
-    include: {
-      company: true,
-      owner: true,
-      tags: { include: { tag: true } },
-      activities: { include: { owner: true }, orderBy: { createdAt: "desc" } },
-      tasks: { orderBy: { dueAt: "asc" }, take: 8 },
-      deals: { include: { stage: true }, orderBy: { updatedAt: "desc" } },
-    },
-  });
-  if (!contact) notFound();
-
-  const [users, tags, fields] = await Promise.all([
+  const [contact, users, tags, fields] = await Promise.all([
+    prisma.contact.findUnique({
+      where: { id },
+      include: {
+        company: true,
+        owner: true,
+        tags: { include: { tag: true } },
+        activities: { include: { owner: true }, orderBy: { createdAt: "desc" } },
+        tasks: { orderBy: { dueAt: "asc" }, take: 8 },
+        deals: { include: { stage: true }, orderBy: { updatedAt: "desc" } },
+      },
+    }),
     prisma.user.findMany({ orderBy: { name: "asc" } }),
     prisma.tag.findMany({ orderBy: { name: "asc" } }),
     prisma.customField.findMany({ orderBy: { sortOrder: "asc" } }),
   ]);
+  if (!contact) notFound();
 
   let customData: Record<string, string> = {};
   try {

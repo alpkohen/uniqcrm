@@ -18,14 +18,14 @@ export default async function ContactsPage({
   const owner = params.owner ?? "";
   const page = Math.max(1, Number(params.page ?? 1) || 1);
 
-  const [tags, users] = await Promise.all([
-    prisma.tag.findMany({ orderBy: { name: "asc" } }),
-    prisma.user.findMany({ orderBy: { name: "asc" } }),
-  ]);
-
   const where = buildContactWhere({ q, tag, owner });
 
-  const [total, contacts] = await Promise.all([
+  // All four queries are independent of each other, so they run in a single
+  // batch — this used to be two sequential Promise.all round trips (tags+users,
+  // then count+contacts), which doubled the DB latency on every page load.
+  const [tags, users, total, contacts] = await Promise.all([
+    prisma.tag.findMany({ orderBy: { name: "asc" } }),
+    prisma.user.findMany({ orderBy: { name: "asc" } }),
     prisma.contact.count({ where }),
     prisma.contact.findMany({
       where,

@@ -14,22 +14,22 @@ export default async function CompanyDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const currentUser = await requireUser();
   const { id } = await params;
-  const company = await prisma.company.findUnique({
-    where: { id },
-    include: {
-      owner: true,
-      contacts: { orderBy: { lastName: "asc" } },
-      deals: { include: { stage: true } },
-    },
-  });
-  if (!company) notFound();
-  const [users, sectors, pipeline] = await Promise.all([
+  const [currentUser, company, users, sectors, pipeline] = await Promise.all([
+    requireUser(),
+    prisma.company.findUnique({
+      where: { id },
+      include: {
+        owner: true,
+        contacts: { orderBy: { lastName: "asc" } },
+        deals: { include: { stage: true } },
+      },
+    }),
     prisma.user.findMany({ orderBy: { name: "asc" } }),
     listDistinctSectors(),
     prisma.pipeline.findFirst({ include: { stages: { orderBy: { sortOrder: "asc" } } } }),
   ]);
+  if (!company) notFound();
   const update = updateCompany.bind(null, company.id);
   const remove = deleteCompany.bind(null, company.id);
 
