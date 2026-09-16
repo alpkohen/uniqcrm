@@ -6,10 +6,12 @@ export function ContactFields({
   tags,
   fields,
   values,
+  showTags = true,
 }: {
   users: Pick<User, "id" | "name">[];
   tags: Tag[];
   fields: CustomField[];
+  showTags?: boolean;
   values?: {
     firstName?: string;
     lastName?: string;
@@ -74,23 +76,25 @@ export function ContactFields({
           ))}
         </select>
       </label>
-      <fieldset className="sm:col-span-2">
-        <legend className="mb-2 text-sm font-medium">Etiketler</legend>
-        <div className="flex flex-wrap gap-3">
-          {tags.map((tag) => (
-            <label key={tag.id} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                name="tagIds"
-                value={tag.id}
-                defaultChecked={values?.tagIds?.includes(tag.id)}
-              />
-              <span className="size-2 rounded-full" style={{ backgroundColor: tag.color }} />
-              {tag.name}
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      {showTags ? (
+        <fieldset className="sm:col-span-2">
+          <legend className="mb-2 text-sm font-medium">Etiketler</legend>
+          <div className="flex flex-wrap gap-3">
+            {tags.map((tag) => (
+              <label key={tag.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="tagIds"
+                  value={tag.id}
+                  defaultChecked={values?.tagIds?.includes(tag.id)}
+                />
+                <span className="size-2 rounded-full" style={{ backgroundColor: tag.color }} />
+                {tag.name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
       {fields.map((field) => {
         const options = JSON.parse(field.options || "[]") as string[];
         const name = `custom_${field.key}`;

@@ -2,58 +2,82 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { formatTry } from "@/lib/format";
 import { PageHeader } from "@/components/ui-helpers";
+import { Button } from "@/components/ui/button";
+import { StageFunnel } from "@/components/stage-funnel";
 
 const MONTH_LABELS = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
 
 type MonthlyRow = { month: Date; status: string; count: number; total: number };
 
-export default async function ReportsPage() {
-  await requireUser();
+function toDateInputValue(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
 
-  const [users, repGroups, stageGroups, pipeline, monthlyRows] = await Promise.all([
-    prisma.user.findMany({ orderBy: { name: "asc" } }),
-    prisma.deal.groupBy({ by: ["ownerId", "status"], _count: true, _sum: { amount: true } }),
-    prisma.deal.groupBy({ by: ["stageId"], _count: true, _sum: { amount: true } }),
-    prisma.pipeline.findFirst({ include: { stages: { orderBy: { sortOrder: "asc" } } } }),
+function rangePreset(months: number) {
+  const to = new Date();
+  const from = new Date(to.getFullYear(), to.getMonth() - (months - 1), 1);
+  return { from: toDateInputValue(from), to: toDateInputValue(to) };
+}
+
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
+  await requireUser();
+  const params = await searchParams;
+
+  const today = new Date();
+  const defaultFrom = new Date(today.getFullYear(), today.getMonth() - 11, 1);
+  const from = params.from ? new Date(params.from) : defaultFrom;
+  const to = params.to ? new Date(`${params.to}T23:59:59`) : today;
+
+  const [pipeline, monthlyRows] = await Promise.all([
+    prisma.pipeline.findFirst({
+      include: {
+        stages: {
+          orderBy: { sortOrder: "asc" },
+          include: {
+            deals: {
+              select: {
+                id: true,
+                title: true,
+                amount: true,
+                company: { select: { name: true } },
+                contact: { select: { firstName: true, lastName: true } },
+              },
+            },
+          },
+        },
+      },
+    }),
     prisma.$queryRaw<MonthlyRow[]>`
-      SELECT date_trunc('month', "updatedAt") as month, status, COUNT(*)::int as count, COALESCE(SUM(amount), 0)::int as total
+      SELECT
+        date_trunc('month', "updatedAt") as month,
+        status,
+        COUNT(*)::int as count,
+        COALESCE(SUM(amount), 0)::int as total
       FROM "Deal"
-      WHERE status IN ('WON', 'LOST') AND "updatedAt" >= NOW() - INTERVAL '12 months'
+      WHERE status IN ('WON', 'LOST')
+        AND "updatedAt" >= ${from}
+        AND "updatedAt" <= ${to}
       GROUP BY month, status
       ORDER BY month ASC
     `,
   ]);
 
-  const repStats = users
-    .map((user) => {
-      const rows = repGroups.filter((g) => g.ownerId === user.id);
-      const open = rows.find((r) => r.status === "OPEN");
-      const won = rows.find((r) => r.status === "WON");
-      const lost = rows.find((r) => r.status === "LOST");
-      const wonCount = won?._count ?? 0;
-      const lostCount = lost?._count ?? 0;
-      const winRate = wonCount + lostCount > 0 ? Math.round((wonCount / (wonCount + lostCount)) * 100) : null;
-      return {
-        user,
-        openCount: open?._count ?? 0,
-        openAmount: open?._sum.amount ?? 0,
-        wonCount,
-        wonAmount: won?._sum.amount ?? 0,
-        lostCount,
-        winRate,
-      };
-    })
-    .sort((a, b) => b.wonAmount - a.wonAmount);
+  const stages = (pipeline?.stages ?? []).map((stage) => ({
+    id: stage.id,
+    name: stage.name,
+    color: stage.color,
+    deals: stage.deals,
+  }));
 
-  const stages = (pipeline?.stages ?? []).map((stage) => {
-    const group = stageGroups.find((g) => g.stageId === stage.id);
-    return { stage, count: group?._count ?? 0, amount: group?._sum.amount ?? 0 };
-  });
-  const maxStageCount = Math.max(1, ...stages.map((s) => s.count));
-
-  const totalWon = repStats.reduce((sum, r) => sum + r.wonCount, 0);
-  const totalLost = repStats.reduce((sum, r) => sum + r.lostCount, 0);
-  const overallWinRate = totalWon + totalLost > 0 ? Math.round((totalWon / (totalWon + totalLost)) * 100) : null;
+  const wonStageIds = new Set((pipeline?.stages ?? []).filter((s) => s.isWon).map((s) => s.id));
+  const lostStageIds = new Set((pipeline?.stages ?? []).filter((s) => s.isLost).map((s) => s.id));
+  const wonCount = (pipeline?.stages ?? []).filter((s) => wonStageIds.has(s.id)).reduce((n, s) => n + s.deals.length, 0);
+  const lostCount = (pipeline?.stages ?? []).filter((s) => lostStageIds.has(s.id)).reduce((n, s) => n + s.deals.length, 0);
+  const overallWinRate = wonCount + lostCount > 0 ? Math.round((wonCount / (wonCount + lostCount)) * 100) : null;
 
   const monthKeys: string[] = [];
   const monthlyMap = new Map<string, { won: number; wonAmount: number; lost: number; lostAmount: number }>();
@@ -78,86 +102,58 @@ export default async function ReportsPage() {
   });
   const maxMonthlyAmount = Math.max(1, ...monthly.flatMap((m) => [m.wonAmount, m.lostAmount]));
 
+  const presets = [
+    { label: "Bu ay", ...rangePreset(1) },
+    { label: "Son 3 ay", ...rangePreset(3) },
+    { label: "Son 12 ay", ...rangePreset(12) },
+  ];
+
   return (
     <div>
-      <PageHeader
-        title="Raporlar"
-        description="Danışman performansı, aşama dönüşümü ve aylık kazanılan/kaybedilen fırsatlar."
-      />
-
-      <section className="mb-8 rounded-xl border bg-card p-5">
-        <h2 className="mb-4 text-sm font-medium">Danışman performansı</h2>
-        {repStats.every((r) => r.openCount === 0 && r.wonCount === 0 && r.lostCount === 0) ? (
-          <p className="text-sm text-muted-foreground">Henüz fırsat yok.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b text-left text-muted-foreground">
-                <tr>
-                  <th className="py-2 pr-4 font-medium">Danışman</th>
-                  <th className="py-2 pr-4 font-medium">Açık</th>
-                  <th className="py-2 pr-4 font-medium">Kazanılan</th>
-                  <th className="py-2 pr-4 font-medium">Kaybedilen</th>
-                  <th className="py-2 pr-4 font-medium">Kazanma oranı</th>
-                </tr>
-              </thead>
-              <tbody>
-                {repStats.map((r) => (
-                  <tr key={r.user.id} className="border-b last:border-0">
-                    <td className="py-2 pr-4 font-medium">{r.user.name}</td>
-                    <td className="py-2 pr-4 text-muted-foreground">
-                      {r.openCount} · {formatTry(r.openAmount)}
-                    </td>
-                    <td className="py-2 pr-4 text-primary">
-                      {r.wonCount} · {formatTry(r.wonAmount)}
-                    </td>
-                    <td className="py-2 pr-4 text-muted-foreground">{r.lostCount}</td>
-                    <td className="py-2 pr-4">{r.winRate === null ? "—" : `%${r.winRate}`}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <PageHeader title="Raporlar" description="Aşama dönüşümü ve aylık kazanılan/kaybedilen fırsatlar." />
 
       <section className="mb-8 rounded-xl border bg-card p-5">
         <h2 className="mb-1 text-sm font-medium">Aşama dönüşümü</h2>
         <p className="mb-4 text-xs text-muted-foreground">
-          Genel kazanma oranı: {overallWinRate === null ? "—" : `%${overallWinRate}`} ({totalWon} kazanıldı ·{" "}
-          {totalLost} kaybedildi)
+          Genel kazanma oranı: {overallWinRate === null ? "—" : `%${overallWinRate}`} ({wonCount} kazanıldı ·{" "}
+          {lostCount} kaybedildi) · bir aşamaya tıklayın, içindeki fırsatları görün.
         </p>
         {stages.length === 0 ? (
           <p className="text-sm text-muted-foreground">Pipeline henüz yok.</p>
         ) : (
-          <div className="grid gap-3">
-            {stages.map(({ stage, count, amount }) => (
-              <div key={stage.id}>
-                <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">{stage.name}</span>
-                  <span>
-                    {count} · {formatTry(amount)}
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${(count / maxStageCount) * 100}%`, backgroundColor: stage.color }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+          <StageFunnel stages={stages} />
         )}
       </section>
 
       <section className="rounded-xl border bg-card p-5">
         <h2 className="mb-1 text-sm font-medium">Aylık kazanılan / kaybedilen</h2>
-        <p className="mb-4 text-xs text-muted-foreground">
-          Son 12 ay · aşama değişim tarihi olarak son güncelleme tarihi kullanılır.
-        </p>
+        <p className="mb-4 text-xs text-muted-foreground">Tarih aralığı seçerek istediğiniz dönemi görüntüleyin.</p>
+        <form className="mb-4 flex flex-wrap items-end gap-2 text-sm">
+          <label className="grid gap-1">
+            <span className="text-xs font-medium text-muted-foreground">Başlangıç</span>
+            <input type="date" name="from" defaultValue={toDateInputValue(from)} className="field-input h-8" />
+          </label>
+          <label className="grid gap-1">
+            <span className="text-xs font-medium text-muted-foreground">Bitiş</span>
+            <input type="date" name="to" defaultValue={toDateInputValue(to)} className="field-input h-8" />
+          </label>
+          <Button type="submit" variant="outline" size="sm">
+            Uygula
+          </Button>
+          <div className="ml-2 flex gap-1.5">
+            {presets.map((preset) => (
+              <a
+                key={preset.label}
+                href={`/reports?from=${preset.from}&to=${preset.to}`}
+                className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted"
+              >
+                {preset.label}
+              </a>
+            ))}
+          </div>
+        </form>
         {monthly.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Henüz kapanmış fırsat yok.</p>
+          <p className="text-sm text-muted-foreground">Seçilen aralıkta kapanmış fırsat yok.</p>
         ) : (
           <div className="grid gap-3">
             {monthly.map((m) => (

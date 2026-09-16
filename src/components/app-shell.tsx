@@ -6,9 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Building2,
-  Calendar,
   Import,
-  Kanban,
   LayoutDashboard,
   ListTodo,
   Menu,
@@ -33,9 +31,7 @@ const NAV = [
   { href: "/contacts", label: "Kişiler", icon: Users },
   { href: "/companies", label: "Firmalar", icon: Building2 },
   { href: "/deals", label: "Fırsatlar", icon: Handshake },
-  { href: "/workflows", label: "İş akışları", icon: Kanban },
   { href: "/tasks", label: "Görevler", icon: ListTodo },
-  { href: "/meetings", label: "Toplantılar", icon: Calendar },
   { href: "/reports", label: "Raporlar", icon: BarChart3 },
   { href: "/import", label: "İçe aktar", icon: Import },
   { href: "/settings", label: "Ayarlar", icon: Settings },
@@ -84,9 +80,9 @@ export function AppShell({
       <aside className="hidden w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex">
         <div className="px-5 py-5">
           <p className="text-[11px] font-medium tracking-[0.2em] text-sidebar-primary uppercase">
-            Uniq
+            UNIQ
           </p>
-          <p className="mt-1 text-lg font-semibold tracking-tight">CRM / SFA</p>
+          <p className="mt-1 text-lg font-semibold tracking-tight">CRM</p>
         </div>
         <div className="px-3 pb-3">
           <GlobalSearch />
@@ -113,8 +109,8 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b bg-card px-4 py-3 md:hidden">
           <div>
-            <p className="text-[11px] font-medium tracking-[0.2em] text-primary uppercase">Uniq</p>
-            <p className="text-sm font-semibold">CRM / SFA</p>
+            <p className="text-[11px] font-medium tracking-[0.2em] text-primary uppercase">UNIQ</p>
+            <p className="text-sm font-semibold">CRM</p>
           </div>
           <Sheet>
             <SheetTrigger render={<Button variant="outline" size="icon-sm" />}>
