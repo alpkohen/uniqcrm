@@ -5,8 +5,22 @@ import { formatDateTime, fullName, isOverdue } from "@/lib/format";
 import { PageHeader } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { SearchSelect } from "@/components/search-select";
-import { createMeeting, createTask, deleteMeeting, toggleTask } from "@/actions/activities";
+import { TaskCheckbox } from "@/components/task-checkbox";
+import { createMeeting, createTask, deleteMeeting } from "@/actions/activities";
 import { cn } from "cn";
+
+const PERIODS = [
+  { value: "week", label: "Son 7 gün" },
+  { value: "month", label: "Son 30 gün" },
+  { value: "all", label: "Tümü" },
+];
+
+function periodCutoff(period: string): Date | null {
+  const now = Date.now();
+  if (period === "week") return new Date(now - 7 * 86400000);
+  if (period === "month") return new Date(now - 30 * 86400000);
+  return null;
+}
 
 function TaskGroup({
   items,
@@ -28,20 +42,10 @@ function TaskGroup({
   return (
     <ul className="divide-y">
       {items.map((task) => {
-        const toggle = toggleTask.bind(null, task.id);
         const overdueItem = isOverdue(task.dueAt, task.completedAt);
         return (
           <li key={task.id} className="flex items-start gap-3 px-4 py-3">
-            <form action={toggle}>
-              <button
-                type="submit"
-                className={cn(
-                  "mt-0.5 size-4 rounded border",
-                  task.completedAt ? "bg-primary" : "bg-background"
-                )}
-                aria-label="Tamamlandı olarak işaretle"
-              />
-            </form>
+            <TaskCheckbox taskId={task.id} completed={Boolean(task.completedAt)} />
             <div className="min-w-0 flex-1">
               <p className={cn("text-sm font-medium", task.completedAt && "text-muted-foreground line-through")}>
                 {task.title}
@@ -68,8 +72,17 @@ function TaskGroup({
   );
 }
 
-export default async function TasksPage() {
+export default async function TasksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ done?: string; meetings?: string }>;
+}) {
   const user = await requireUser();
+  const params = await searchParams;
+  const donePeriod = params.done ?? "month";
+  const meetingsPeriod = params.meetings ?? "month";
+  const doneCutoff = periodCutoff(donePeriod);
+  const meetingsCutoff = periodCutoff(meetingsPeriod);
   const now = new Date();
   const [tasks, users, upcomingMeetings, pastMeetings] = await Promise.all([
     prisma.task.findMany({
@@ -83,16 +96,20 @@ export default async function TasksPage() {
       orderBy: { startsAt: "asc" },
     }),
     prisma.meeting.findMany({
-      where: { startsAt: { lt: now } },
+      where: {
+        startsAt: { lt: now, ...(meetingsCutoff ? { gte: meetingsCutoff } : {}) },
+      },
       include: { owner: true, contact: true },
       orderBy: { startsAt: "desc" },
-      take: 8,
+      take: 200,
     }),
   ]);
 
   const overdue = tasks.filter((task) => isOverdue(task.dueAt, task.completedAt));
   const open = tasks.filter((task) => !task.completedAt && !isOverdue(task.dueAt, task.completedAt));
-  const done = tasks.filter((task) => task.completedAt);
+  const done = tasks.filter(
+    (task) => task.completedAt && (!doneCutoff || task.completedAt >= doneCutoff),
+  );
 
   return (
     <div>
@@ -114,8 +131,23 @@ export default async function TasksPage() {
       </section>
 
       <section className="mb-8 rounded-xl border bg-card">
-        <h2 className="border-b px-4 py-3 text-sm font-medium text-muted-foreground">Tamamlanan</h2>
-        <TaskGroup items={done} empty="Henüz tamamlanan görev yok." />
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
+          <h2 className="text-sm font-medium text-muted-foreground">Tamamlanan</h2>
+          <form className="flex items-center gap-1.5">
+            <input type="hidden" name="meetings" value={meetingsPeriod} />
+            <select name="done" defaultValue={donePeriod} className="field-select h-7 text-xs">
+              {PERIODS.map((period) => (
+                <option key={period.value} value={period.value}>
+                  {period.label}
+                </option>
+              ))}
+            </select>
+            <Button type="submit" variant="outline" size="xs">
+              Uygula
+            </Button>
+          </form>
+        </div>
+        <TaskGroup items={done} empty="Bu dönemde tamamlanan görev yok." />
       </section>
 
       <section className="mb-8 rounded-xl border bg-card p-5">
@@ -193,9 +225,24 @@ export default async function TasksPage() {
       </section>
 
       <section className="mb-6 rounded-xl border bg-card">
-        <h3 className="border-b px-4 py-3 text-sm font-medium text-muted-foreground">Geçmiş</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
+          <h3 className="text-sm font-medium text-muted-foreground">Geçmiş</h3>
+          <form className="flex items-center gap-1.5">
+            <input type="hidden" name="done" value={donePeriod} />
+            <select name="meetings" defaultValue={meetingsPeriod} className="field-select h-7 text-xs">
+              {PERIODS.map((period) => (
+                <option key={period.value} value={period.value}>
+                  {period.label}
+                </option>
+              ))}
+            </select>
+            <Button type="submit" variant="outline" size="xs">
+              Uygula
+            </Button>
+          </form>
+        </div>
         {pastMeetings.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-muted-foreground">Kayıt yok.</p>
+          <p className="px-4 py-6 text-sm text-muted-foreground">Bu dönemde kayıt yok.</p>
         ) : (
           <ul className="divide-y">
             {pastMeetings.map((meeting) => (

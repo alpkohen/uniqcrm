@@ -1,5 +1,6 @@
 import type { CustomField, Tag, User } from "@prisma/client";
 import { SearchSelect } from "@/components/search-select";
+import { TagPicker } from "@/components/tag-picker";
 
 export function ContactFields({
   users,
@@ -77,23 +78,9 @@ export function ContactFields({
         </select>
       </label>
       {showTags ? (
-        <fieldset className="sm:col-span-2">
-          <legend className="mb-2 text-sm font-medium">Etiketler</legend>
-          <div className="flex flex-wrap gap-3">
-            {tags.map((tag) => (
-              <label key={tag.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  name="tagIds"
-                  value={tag.id}
-                  defaultChecked={values?.tagIds?.includes(tag.id)}
-                />
-                <span className="size-2 rounded-full" style={{ backgroundColor: tag.color }} />
-                {tag.name}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <div className="sm:col-span-2">
+          <TagPicker tags={tags} selectedIds={values?.tagIds ?? []} />
+        </div>
       ) : null}
       {fields.map((field) => {
         const options = JSON.parse(field.options || "[]") as string[];
