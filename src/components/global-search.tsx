@@ -61,10 +61,10 @@ export function GlobalSearch({ onNavigate }: { onNavigate?: () => void }) {
         }}
         onFocus={() => setOpen(true)}
         placeholder="Ara: kişi, firma, fırsat…"
-        className="field-input h-8 w-full text-sm"
+        className="field-input h-8 w-full text-sm text-black"
       />
       {open && query.trim() ? (
-        <div className="absolute left-0 top-full z-20 mt-1 max-h-80 w-full min-w-64 overflow-auto rounded-md border bg-card shadow-md">
+        <div className="absolute left-0 top-full z-20 mt-1 max-h-80 w-full min-w-64 overflow-auto rounded-md border bg-card text-black shadow-md">
           {!results ? (
             <p className="px-3 py-2 text-xs text-muted-foreground">Aranıyor…</p>
           ) : !hasResults ? (
