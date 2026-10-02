@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Building2,
+  ChartPie,
   Import,
   LayoutDashboard,
   ListTodo,
@@ -28,6 +29,7 @@ import { cn } from "cn";
 
 const NAV = [
   { href: "/", label: "Özet", icon: LayoutDashboard },
+  { href: "/people", label: "Kişi Analizi", icon: ChartPie },
   { href: "/contacts", label: "Kişiler", icon: Users },
   { href: "/companies", label: "Firmalar", icon: Building2 },
   { href: "/deals", label: "Fırsatlar", icon: Handshake },
