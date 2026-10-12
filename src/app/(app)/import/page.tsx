@@ -4,6 +4,7 @@ import { CsvImport } from "@/components/csv-import";
 import { CompanyCsvImport } from "@/components/company-csv-import";
 import { DealCsvImport } from "@/components/deal-csv-import";
 import { DealUpdateImport } from "@/components/deal-update-import";
+import { MailOptOutImport } from "@/components/mail-optout-import";
 
 export default function ImportPage() {
   return (
@@ -36,6 +37,14 @@ export default function ImportPage() {
           Mevcut fırsatları silmeden kayıp nedeni ve tarihleri işler. Önce önizleme gösterir, onaylayınca uygular.
         </p>
         <DealUpdateImport />
+      </div>
+
+      <div>
+        <h2 className="mb-1 text-sm font-medium">Mail tercihi (Nimble kişi dışa aktarımı)</h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          “Mail almak istemiyor” işaretli kişileri CRM’de de işaretler. Önce önizleme gösterir.
+        </p>
+        <MailOptOutImport />
       </div>
     </div>
   );

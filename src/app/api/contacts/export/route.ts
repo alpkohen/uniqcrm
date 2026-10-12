@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
-import { buildContactWhere } from "@/lib/contact-filters";
+import { buildContactWhere, parseMailFilter } from "@/lib/contact-filters";
+import { isMailOptOut } from "@/lib/mail-optout";
 import { fullName } from "@/lib/format";
 import { xlsxResponse, todayStamp } from "@/lib/export";
 
@@ -11,9 +12,10 @@ export async function GET(request: Request) {
   const q = searchParams.get("q")?.trim() ?? "";
   const tag = searchParams.get("tag") ?? "";
   const owner = searchParams.get("owner") ?? "";
+  const mail = parseMailFilter(searchParams.get("mail") ?? undefined);
 
   const contacts = await prisma.contact.findMany({
-    where: await buildContactWhere({ q, tag, owner }),
+    where: await buildContactWhere({ q, tag, owner, mail }),
     include: {
       company: { select: { name: true } },
       owner: { select: { name: true } },
@@ -30,6 +32,7 @@ export async function GET(request: Request) {
     Şehir: contact.city ?? "",
     Firma: contact.company?.name ?? "",
     Etiketler: contact.tags.map(({ tag: item }) => item.name).join(", "),
+    "Mail almak istemiyor": isMailOptOut(contact.customData) ? "Evet" : "",
     Sahip: contact.owner.name,
   }));
 

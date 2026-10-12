@@ -2,7 +2,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { PAGE_SIZE } from "@/lib/constants";
 import { fullName } from "@/lib/format";
-import { buildContactWhere } from "@/lib/contact-filters";
+import { buildContactWhere, parseMailFilter } from "@/lib/contact-filters";
+import { isMailOptOut } from "@/lib/mail-optout";
 import { PageHeader, Pagination, EmptyState } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,15 +11,16 @@ import { Badge } from "@/components/ui/badge";
 export default async function ContactsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; tag?: string; owner?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; tag?: string; owner?: string; mail?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const q = params.q?.trim() ?? "";
   const tag = params.tag ?? "";
   const owner = params.owner ?? "";
+  const mail = parseMailFilter(params.mail);
   const page = Math.max(1, Number(params.page ?? 1) || 1);
 
-  const where = await buildContactWhere({ q, tag, owner });
+  const where = await buildContactWhere({ q, tag, owner, mail });
 
   // All four queries are independent of each other, so they run in a single
   // batch — this used to be two sequential Promise.all round trips (tags+users,
@@ -44,6 +46,7 @@ export default async function ContactsPage({
   if (q) query.set("q", q);
   if (tag) query.set("tag", tag);
   if (owner) query.set("owner", owner);
+  if (mail) query.set("mail", mail);
 
   return (
     <div>
@@ -87,6 +90,11 @@ export default async function ContactsPage({
             </option>
           ))}
         </select>
+        <select name="mail" defaultValue={mail} className="field-select">
+          <option value="">Mail tercihi: tümü</option>
+          <option value="optout">Mail almak istemeyenler</option>
+          <option value="ok">Mail atılabilecekler</option>
+        </select>
         <div className="sm:col-span-4">
           <Button type="submit" variant="outline" size="sm">
             Filtrele
@@ -123,6 +131,11 @@ export default async function ContactsPage({
                       {fullName(contact.firstName, contact.lastName)}
                     </Link>
                     <p className="text-xs text-muted-foreground">{contact.email ?? "—"}</p>
+                    {isMailOptOut(contact.customData) ? (
+                      <span className="mt-1 inline-block rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive">
+                        Mail almak istemiyor
+                      </span>
+                    ) : null}
                   </td>
                   <td className="px-4 py-3">{contact.title ?? "—"}</td>
                   <td className="px-4 py-3">

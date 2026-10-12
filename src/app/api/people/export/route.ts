@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { fullName } from "@/lib/format";
+import { isMailOptOut } from "@/lib/mail-optout";
 import { xlsxResponse, todayStamp } from "@/lib/export";
 import { buildPeopleWhere, loadSnapshot, needsTitleFilter, parsePeopleFilters } from "@/lib/people";
 import { classifyTitle, deptMeta, levelMeta } from "@/lib/title-groups";
@@ -30,6 +31,7 @@ export async function GET(request: Request) {
       Firma: contact.company?.name ?? "",
       Sektör: contact.company?.sector ?? "",
       Şehir: contact.city ?? "",
+      "Mail almak istemiyor": isMailOptOut(contact.customData) ? "Evet" : "",
     };
   });
 
