@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const owner = searchParams.get("owner") ?? "";
 
   const contacts = await prisma.contact.findMany({
-    where: buildContactWhere({ q, tag, owner }),
+    where: await buildContactWhere({ q, tag, owner }),
     include: {
       company: { select: { name: true } },
       owner: { select: { name: true } },

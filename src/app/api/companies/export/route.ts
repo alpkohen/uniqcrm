@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const q = searchParams.get("q")?.trim() ?? "";
 
   const companies = await prisma.company.findMany({
-    where: buildCompanyWhere(q),
+    where: await buildCompanyWhere(q),
     include: {
       owner: { select: { name: true } },
       _count: { select: { contacts: true, deals: true } },

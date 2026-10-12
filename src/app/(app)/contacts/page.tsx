@@ -18,7 +18,7 @@ export default async function ContactsPage({
   const owner = params.owner ?? "";
   const page = Math.max(1, Number(params.page ?? 1) || 1);
 
-  const where = buildContactWhere({ q, tag, owner });
+  const where = await buildContactWhere({ q, tag, owner });
 
   // All four queries are independent of each other, so they run in a single
   // batch — this used to be two sequential Promise.all round trips (tags+users,

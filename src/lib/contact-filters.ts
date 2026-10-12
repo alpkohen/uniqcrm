@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
+import { searchContactIds } from "@/lib/search";
 
-export function buildContactWhere({
+export async function buildContactWhere({
   q,
   tag,
   owner,
@@ -8,21 +9,11 @@ export function buildContactWhere({
   q: string;
   tag: string;
   owner: string;
-}): Prisma.ContactWhereInput {
+}): Promise<Prisma.ContactWhereInput> {
+  const ids = q ? await searchContactIds(q) : null;
   return {
     AND: [
-      q
-        ? {
-            OR: [
-              { firstName: { contains: q } },
-              { lastName: { contains: q } },
-              { email: { contains: q } },
-              { phone: { contains: q } },
-              { title: { contains: q } },
-              { company: { name: { contains: q } } },
-            ],
-          }
-        : {},
+      ids ? { id: { in: ids } } : {},
       tag ? { tags: { some: { tagId: tag } } } : {},
       owner ? { ownerId: owner } : {},
     ],

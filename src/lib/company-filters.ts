@@ -1,13 +1,7 @@
 import type { Prisma } from "@prisma/client";
+import { searchCompanyIds } from "@/lib/search";
 
-export function buildCompanyWhere(q: string): Prisma.CompanyWhereInput | undefined {
-  return q
-    ? {
-        OR: [
-          { name: { contains: q } },
-          { city: { contains: q } },
-          { sector: { contains: q } },
-        ],
-      }
-    : undefined;
+export async function buildCompanyWhere(q: string): Promise<Prisma.CompanyWhereInput | undefined> {
+  const ids = q ? await searchCompanyIds(q, true) : null;
+  return ids ? { id: { in: ids } } : undefined;
 }

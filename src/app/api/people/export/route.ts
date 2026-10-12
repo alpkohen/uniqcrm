@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
   const snapshot = needsTitleFilter(filters) ? await loadSnapshot() : null;
   const contacts = await prisma.contact.findMany({
-    where: buildPeopleWhere(filters, snapshot),
+    where: await buildPeopleWhere(filters, snapshot),
     include: { company: { select: { name: true, sector: true } } },
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
   });

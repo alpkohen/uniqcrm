@@ -81,8 +81,8 @@ export default async function PeoplePage({
   const snapshotPromise = loadSnapshot();
   const insightsPromise = Promise.all([loadMonthlyAdds(12), loadTopCompanies(8)]);
 
-  const fetchList = (snapshot: Awaited<typeof snapshotPromise> | null) => {
-    const where = buildPeopleWhere(f, snapshot);
+  const fetchList = async (snapshot: Awaited<typeof snapshotPromise> | null) => {
+    const where = await buildPeopleWhere(f, snapshot);
     return Promise.all([
       prisma.contact.count({ where }),
       prisma.contact.findMany({

@@ -219,10 +219,13 @@ export function computeFacets(snapshot: SnapshotRow[], f: PeopleFilters) {
   return { levels, depts, sectors, matching };
 }
 
-export function buildPeopleWhere(f: PeopleFilters, snapshot: SnapshotRow[] | null): Prisma.ContactWhereInput {
+export async function buildPeopleWhere(
+  f: PeopleFilters,
+  snapshot: SnapshotRow[] | null,
+): Promise<Prisma.ContactWhereInput> {
   const and: Prisma.ContactWhereInput[] = [];
 
-  if (f.q) and.push(buildContactWhere({ q: f.q, tag: "", owner: "" }));
+  if (f.q) and.push(await buildContactWhere({ q: f.q, tag: "", owner: "" }));
   if (f.seg === "email") and.push({ AND: [{ email: { not: null } }, { email: { not: "" } }] });
   if (f.seg === "phone") and.push({ AND: [{ phone: { not: null } }, { phone: { not: "" } }] });
   if (f.seg === "nocompany") and.push({ companyId: null });

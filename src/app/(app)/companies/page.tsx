@@ -13,7 +13,7 @@ export default async function CompaniesPage({
   const params = await searchParams;
   const query = params.q?.trim() ?? "";
   const page = Math.max(1, Number(params.page ?? 1) || 1);
-  const where = buildCompanyWhere(query);
+  const where = await buildCompanyWhere(query);
 
   const [total, companies] = await Promise.all([
     prisma.company.count({ where }),

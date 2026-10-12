@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { fullName } from "@/lib/format";
+import { searchCompanies, searchContacts, searchDeals } from "@/lib/search";
 
 export async function GET(request: Request) {
   await requireUser();
@@ -13,30 +13,9 @@ export async function GET(request: Request) {
   }
 
   const [contacts, companies, deals] = await Promise.all([
-    prisma.contact.findMany({
-      where: {
-        OR: [
-          { firstName: { contains: q, mode: "insensitive" } },
-          { lastName: { contains: q, mode: "insensitive" } },
-          { email: { contains: q, mode: "insensitive" } },
-        ],
-      },
-      select: { id: true, firstName: true, lastName: true, email: true },
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-      take: 5,
-    }),
-    prisma.company.findMany({
-      where: { name: { contains: q, mode: "insensitive" } },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-      take: 5,
-    }),
-    prisma.deal.findMany({
-      where: { title: { contains: q, mode: "insensitive" } },
-      select: { id: true, title: true },
-      orderBy: { updatedAt: "desc" },
-      take: 5,
-    }),
+    searchContacts(q, 6),
+    searchCompanies(q, 5),
+    searchDeals(q, 5),
   ]);
 
   return NextResponse.json({
