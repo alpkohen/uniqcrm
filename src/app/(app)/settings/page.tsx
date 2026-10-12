@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { roleLabel } from "@/lib/format";
 import { PageHeader } from "@/components/ui-helpers";
+import { ActionForm } from "@/components/action-form";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -43,7 +44,7 @@ export default async function SettingsPage() {
                 </div>
                 {isAdmin ? (
                   <div className="flex flex-wrap items-center gap-2">
-                    <form action={setRole} className="flex items-center gap-1.5">
+                    <ActionForm action={setRole} className="flex flex-wrap items-center gap-1.5" successText="Rol güncellendi.">
                       <select name="role" defaultValue={item.role} className="field-select h-8 text-xs">
                         <option value="ADMIN">Yönetici</option>
                         <option value="MEMBER">Üye</option>
@@ -51,8 +52,8 @@ export default async function SettingsPage() {
                       <Button type="submit" size="sm" variant="outline">
                         Kaydet
                       </Button>
-                    </form>
-                    <form action={resetPassword} className="flex items-center gap-1.5">
+                    </ActionForm>
+                    <ActionForm action={resetPassword} className="flex flex-wrap items-center gap-1.5" successText="Şifre güncellendi.">
                       <input
                         name="password"
                         type="password"
@@ -63,12 +64,12 @@ export default async function SettingsPage() {
                       <Button type="submit" size="sm" variant="outline">
                         Şifre sıfırla
                       </Button>
-                    </form>
-                    <form action={remove}>
+                    </ActionForm>
+                    <ActionForm action={remove} className="flex flex-wrap items-center gap-1.5" successText="Silindi.">
                       <Button type="submit" size="sm" variant="ghost">
                         Sil
                       </Button>
-                    </form>
+                    </ActionForm>
                   </div>
                 ) : (
                   <Badge variant="secondary">{roleLabel(item.role)}</Badge>
@@ -78,7 +79,11 @@ export default async function SettingsPage() {
           })}
         </ul>
         {isAdmin ? (
-          <form action={createUser} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <ActionForm
+            action={createUser}
+            className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+            successText="Kullanıcı eklendi."
+          >
             <label className="grid gap-1.5 text-sm">
               <span className="font-medium">Ad soyad</span>
               <input name="name" required className="field-input" />
@@ -101,7 +106,7 @@ export default async function SettingsPage() {
             <div className="sm:col-span-2 lg:col-span-4">
               <Button type="submit">Kullanıcı ekle</Button>
             </div>
-          </form>
+          </ActionForm>
         ) : null}
       </section>
 
