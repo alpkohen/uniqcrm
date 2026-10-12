@@ -31,7 +31,6 @@ export default async function ContactsPage({
       where,
       include: {
         company: { select: { id: true, name: true } },
-        owner: { select: { name: true } },
         tags: { include: { tag: { select: { id: true, name: true } } } },
       },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
@@ -111,9 +110,9 @@ export default async function ContactsPage({
             <thead className="border-b bg-muted/40 text-left text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 font-medium">Kişi</th>
+                <th className="px-4 py-3 font-medium">Ünvan</th>
                 <th className="px-4 py-3 font-medium">Firma</th>
                 <th className="px-4 py-3 font-medium">Etiketler</th>
-                <th className="px-4 py-3 font-medium">Sahip</th>
               </tr>
             </thead>
             <tbody>
@@ -123,10 +122,9 @@ export default async function ContactsPage({
                     <Link href={`/contacts/${contact.id}`} className="font-medium hover:underline">
                       {fullName(contact.firstName, contact.lastName)}
                     </Link>
-                    <p className="text-xs text-muted-foreground">
-                      {contact.title ?? contact.email ?? "—"}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{contact.email ?? "—"}</p>
                   </td>
+                  <td className="px-4 py-3">{contact.title ?? "—"}</td>
                   <td className="px-4 py-3">
                     {contact.company ? (
                       <Link href={`/companies/${contact.company.id}`} className="hover:underline">
@@ -145,7 +143,6 @@ export default async function ContactsPage({
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{contact.owner.name}</td>
                 </tr>
               ))}
             </tbody>
