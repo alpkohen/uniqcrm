@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { moveDeal } from "@/actions/deals";
+import { moveDeal, setDealLostReason } from "@/actions/deals";
 import { KanbanBoard } from "@/components/kanban-board";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,8 +35,29 @@ export function DealKanban({ columns }: { columns: Column[] }) {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Reasons picked straight on a card show immediately, before the refresh brings them back.
+  const [picked, setPicked] = useState<Record<string, string>>({});
+
+  async function setReasonOnCard(dealId: string, value: string) {
+    if (!value) return;
+    const previous = picked[dealId];
+    setPicked((current) => ({ ...current, [dealId]: value }));
+    try {
+      await setDealLostReason(dealId, value);
+      router.refresh();
+    } catch {
+      setPicked((current) => {
+        const next = { ...current };
+        if (previous === undefined) delete next[dealId];
+        else next[dealId] = previous;
+        return next;
+      });
+    }
+  }
 
   const lostIds = new Set(columns.filter((column) => column.isLost).map((column) => column.id));
+  const columnOf = (dealId: string) =>
+    columns.find((column) => column.items.some((item) => item.id === dealId))?.id ?? "";
 
   function closeDialog() {
     if (busy) return;
@@ -101,10 +122,28 @@ export function DealKanban({ columns }: { columns: Column[] }) {
                 deal.owner.name
               )}
             </p>
-            {deal.lostReason ? (
-              <p className="mt-2 inline-block rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive">
-                {deal.lostReason}
-              </p>
+            {lostIds.has(columnOf(deal.id)) ? (
+              <select
+                aria-label="Kayıp nedeni"
+                value={picked[deal.id] ?? deal.lostReason ?? ""}
+                onChange={(event) => setReasonOnCard(deal.id, event.target.value)}
+                onPointerDown={(event) => event.stopPropagation()}
+                className={
+                  (picked[deal.id] ?? deal.lostReason)
+                    ? "mt-2 max-w-full cursor-pointer rounded-full border-0 bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive outline-none"
+                    : "mt-2 max-w-full cursor-pointer rounded-full border border-dashed border-destructive/50 bg-transparent px-2 py-0.5 text-[11px] font-medium text-destructive/80 outline-none"
+                }
+              >
+                <option value="">+ Kayıp nedeni seç</option>
+                {LOST_REASONS.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+                {deal.lostReason && !(LOST_REASONS as readonly string[]).includes(deal.lostReason) ? (
+                  <option value={deal.lostReason}>{deal.lostReason}</option>
+                ) : null}
+              </select>
             ) : null}
           </div>
         )}

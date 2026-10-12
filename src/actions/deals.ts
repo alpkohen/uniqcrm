@@ -88,6 +88,21 @@ export async function moveDeal(dealId: string, stageId: string, lostReason?: str
   revalidatePath("/");
 }
 
+// Lets a lost deal's reason be set or corrected straight from its board card.
+export async function setDealLostReason(dealId: string, lostReason: string) {
+  await requireUser();
+  const reason = lostReason.trim();
+  if (!reason) throw new Error(LOST_REASON_REQUIRED);
+
+  const deal = await prisma.deal.findUnique({ where: { id: dealId }, select: { status: true } });
+  if (!deal || deal.status !== "LOST") return;
+
+  await prisma.deal.update({ where: { id: dealId }, data: { lostReason: reason } });
+
+  revalidatePath("/deals");
+  revalidatePath(`/deals/${dealId}`);
+}
+
 export async function deleteDeal(dealId: string) {
   await requireUser();
   await prisma.deal.delete({ where: { id: dealId } });
