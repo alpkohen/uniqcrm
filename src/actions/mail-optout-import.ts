@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { foldTitle } from "@/lib/title-groups";
-import { MAIL_OPTOUT_KEY, MAIL_OPTOUT_LABEL } from "@/lib/mail-optout";
+import { findMailOptOutField, MAIL_OPTOUT_KEY, MAIL_OPTOUT_LABEL } from "@/lib/mail-optout";
 
 export type MailOptOutRow = {
   firstName: string;
@@ -38,9 +38,7 @@ function parseCustom(raw: string | null) {
 export async function markMailOptOut(rows: MailOptOutRow[], options: { apply: boolean }): Promise<MailOptOutResult> {
   await requireUser();
 
-  const existingField = await prisma.customField.findFirst({
-    where: { OR: [{ key: MAIL_OPTOUT_KEY }, { label: { equals: MAIL_OPTOUT_LABEL, mode: "insensitive" } }] },
-  });
+  const existingField = await findMailOptOutField();
   const fieldKey = existingField?.key ?? MAIL_OPTOUT_KEY;
 
   const result: MailOptOutResult = {

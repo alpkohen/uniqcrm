@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { buildContactWhere, parseMailFilter } from "@/lib/contact-filters";
-import { isMailOptOut } from "@/lib/mail-optout";
+import { getMailOptOutKey, isMailOptOut } from "@/lib/mail-optout";
 import { fullName } from "@/lib/format";
 import { xlsxResponse, todayStamp } from "@/lib/export";
 
@@ -24,6 +24,7 @@ export async function GET(request: Request) {
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
   });
 
+  const optOutKey = await getMailOptOutKey();
   const rows = contacts.map((contact) => ({
     Ad: fullName(contact.firstName, contact.lastName),
     Ünvan: contact.title ?? "",
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
     Şehir: contact.city ?? "",
     Firma: contact.company?.name ?? "",
     Etiketler: contact.tags.map(({ tag: item }) => item.name).join(", "),
-    "Mail almak istemiyor": isMailOptOut(contact.customData) ? "Evet" : "",
+    "Mail almak istemiyor": isMailOptOut(contact.customData, optOutKey) ? "Evet" : "",
     Sahip: contact.owner.name,
   }));
 

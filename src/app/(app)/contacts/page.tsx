@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { PAGE_SIZE } from "@/lib/constants";
 import { fullName } from "@/lib/format";
 import { buildContactWhere, parseMailFilter } from "@/lib/contact-filters";
-import { isMailOptOut } from "@/lib/mail-optout";
+import { getMailOptOutKey, isMailOptOut } from "@/lib/mail-optout";
 import { PageHeader, Pagination, EmptyState } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,8 @@ export default async function ContactsPage({
   // All four queries are independent of each other, so they run in a single
   // batch — this used to be two sequential Promise.all round trips (tags+users,
   // then count+contacts), which doubled the DB latency on every page load.
-  const [tags, users, total, contacts] = await Promise.all([
+  const [optOutKey, tags, users, total, contacts] = await Promise.all([
+    getMailOptOutKey(),
     prisma.tag.findMany({ orderBy: { name: "asc" } }),
     prisma.user.findMany({ orderBy: { name: "asc" } }),
     prisma.contact.count({ where }),
@@ -131,7 +132,7 @@ export default async function ContactsPage({
                       {fullName(contact.firstName, contact.lastName)}
                     </Link>
                     <p className="text-xs text-muted-foreground">{contact.email ?? "—"}</p>
-                    {isMailOptOut(contact.customData) ? (
+                    {isMailOptOut(contact.customData, optOutKey) ? (
                       <span className="mt-1 inline-block rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive">
                         Mail almak istemiyor
                       </span>

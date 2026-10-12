@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { fullName } from "@/lib/format";
-import { isMailOptOut } from "@/lib/mail-optout";
+import { getMailOptOutKey, isMailOptOut } from "@/lib/mail-optout";
 import { xlsxResponse, todayStamp } from "@/lib/export";
 import { buildPeopleWhere, loadSnapshot, needsTitleFilter, parsePeopleFilters } from "@/lib/people";
 import { classifyTitle, deptMeta, levelMeta } from "@/lib/title-groups";
@@ -19,6 +19,7 @@ export async function GET(request: Request) {
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
   });
 
+  const optOutKey = await getMailOptOutKey();
   const rows = contacts.map((contact) => {
     const cls = classifyTitle(contact.title);
     return {
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
       Firma: contact.company?.name ?? "",
       Sektör: contact.company?.sector ?? "",
       Şehir: contact.city ?? "",
-      "Mail almak istemiyor": isMailOptOut(contact.customData) ? "Evet" : "",
+      "Mail almak istemiyor": isMailOptOut(contact.customData, optOutKey) ? "Evet" : "",
     };
   });
 

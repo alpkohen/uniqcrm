@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { searchContactIds } from "@/lib/search";
-import { MAIL_OPTOUT_JSON } from "@/lib/mail-optout";
+import { getMailOptOutKey, mailOptOutJson } from "@/lib/mail-optout";
 
 export type MailFilter = "" | "optout" | "ok";
 
@@ -20,13 +20,14 @@ export async function buildContactWhere({
   mail?: MailFilter;
 }): Promise<Prisma.ContactWhereInput> {
   const ids = q ? await searchContactIds(q) : null;
+  const optOut = mail ? mailOptOutJson(await getMailOptOutKey()) : "";
   return {
     AND: [
       ids ? { id: { in: ids } } : {},
       tag ? { tags: { some: { tagId: tag } } } : {},
       owner ? { ownerId: owner } : {},
-      mail === "optout" ? { customData: { contains: MAIL_OPTOUT_JSON } } : {},
-      mail === "ok" ? { NOT: { customData: { contains: MAIL_OPTOUT_JSON } } } : {},
+      mail === "optout" ? { customData: { contains: optOut } } : {},
+      mail === "ok" ? { NOT: { customData: { contains: optOut } } } : {},
     ],
   };
 }
