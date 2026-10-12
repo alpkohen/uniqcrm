@@ -34,6 +34,8 @@ export async function GET(request: Request) {
     Firma: deal.company?.name ?? "",
     Kişi: deal.contact ? fullName(deal.contact.firstName, deal.contact.lastName) : "",
     Sahip: deal.owner.name,
+    "Kayıp nedeni": deal.lostReason ?? "",
+    "Kapanış tarihi": deal.closedAt ? deal.closedAt.toISOString().slice(0, 10) : "",
     Oluşturulma: deal.createdAt.toISOString().slice(0, 10),
     "Son güncelleme": deal.updatedAt.toISOString().slice(0, 10),
   }));

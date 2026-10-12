@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/ui-helpers";
 import { CsvImport } from "@/components/csv-import";
 import { CompanyCsvImport } from "@/components/company-csv-import";
 import { DealCsvImport } from "@/components/deal-csv-import";
+import { DealUpdateImport } from "@/components/deal-update-import";
 
 export default function ImportPage() {
   return (
@@ -27,6 +28,14 @@ export default function ImportPage() {
       <div>
         <h2 className="mb-3 text-sm font-medium">Fırsatlar</h2>
         <DealCsvImport />
+      </div>
+
+      <div>
+        <h2 className="mb-1 text-sm font-medium">Fırsatları güncelle (Nimble dışa aktarımı)</h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Mevcut fırsatları silmeden kayıp nedeni ve tarihleri işler. Önce önizleme gösterir, onaylayınca uygular.
+        </p>
+        <DealUpdateImport />
       </div>
     </div>
   );

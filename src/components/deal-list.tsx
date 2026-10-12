@@ -6,6 +6,7 @@ type DealRow = {
   title: string;
   amount: number;
   status: string;
+  lostReason: string | null;
   stage: { name: string };
   owner: { name: string };
   company: { id: string; name: string } | null;
@@ -24,6 +25,7 @@ export function DealList({ deals }: { deals: DealRow[] }) {
           <tr>
             <th className="px-4 py-3 font-medium">Başlık</th>
             <th className="px-4 py-3 font-medium">Aşama</th>
+            <th className="px-4 py-3 font-medium">Kayıp nedeni</th>
             <th className="px-4 py-3 font-medium">Tutar</th>
             <th className="px-4 py-3 font-medium">Firma / Kişi</th>
             <th className="px-4 py-3 font-medium">Sahip</th>
@@ -41,6 +43,7 @@ export function DealList({ deals }: { deals: DealRow[] }) {
                 ) : null}
               </td>
               <td className="px-4 py-3">{deal.stage.name}</td>
+              <td className="px-4 py-3 text-muted-foreground">{deal.lostReason ?? "—"}</td>
               <td className="px-4 py-3">{formatTry(deal.amount)}</td>
               <td className="px-4 py-3">
                 {deal.company ? (

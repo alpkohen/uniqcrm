@@ -72,10 +72,14 @@ export function KanbanBoard<T extends { id: string }>({
   columns,
   onMove,
   renderCard,
+  interceptMove,
 }: {
   columns: KanbanColumn<T>[];
   onMove: (itemId: string, columnId: string) => Promise<void>;
   renderCard: (item: T) => ReactNode;
+  // Return true to take over a drop (the card is not moved here) — used to ask for
+  // extra input first and call onMove-equivalent logic itself afterwards.
+  interceptMove?: (itemId: string, columnId: string) => boolean;
 }) {
   // Mirrors `columns` locally so a drop can move the card instantly, before the
   // server round trip (onMove) resolves — otherwise the card just snaps back
@@ -106,6 +110,8 @@ export function KanbanBoard<T extends { id: string }>({
     const itemId = String(active.id);
     const sourceColumn = localColumns.find((column) => column.items.some((item) => item.id === itemId));
     if (!sourceColumn || sourceColumn.id === targetColumnId) return;
+
+    if (interceptMove?.(itemId, targetColumnId)) return;
 
     const item = sourceColumn.items.find((entry) => entry.id === itemId)!;
     const previousColumns = localColumns;

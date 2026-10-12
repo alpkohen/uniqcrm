@@ -10,6 +10,16 @@ function str(formData: FormData, key: string) {
   return value.length ? value : null;
 }
 
+// closedAt is stamped when a deal enters Won/Lost and cleared when it goes back to Open;
+// staying inside the same bucket (e.g. editing the title) leaves it untouched.
+function nextClosedAt(previousStatus: string | undefined, nextStatus: string): Date | null | undefined {
+  if (nextStatus === "OPEN") return null;
+  if (previousStatus === nextStatus) return undefined;
+  return new Date();
+}
+
+const LOST_REASON_REQUIRED = "Kaybedildi aşaması için kayıp nedeni seçmelisiniz.";
+
 export async function createDeal(formData: FormData) {
   const user = await requireUser();
   const title = str(formData, "title");
@@ -22,6 +32,8 @@ export async function createDeal(formData: FormData) {
   const amount = Number(formData.get("amount") ?? 0) || 0;
   const stage = await prisma.pipelineStage.findUnique({ where: { id: stageId } });
   const status = stage?.isWon ? "WON" : stage?.isLost ? "LOST" : "OPEN";
+  const lostReason = status === "LOST" ? str(formData, "lostReason") : null;
+  if (status === "LOST" && !lostReason) throw new Error(LOST_REASON_REQUIRED);
 
   await prisma.deal.create({
     data: {
@@ -30,6 +42,8 @@ export async function createDeal(formData: FormData) {
       pipelineId,
       stageId,
       status,
+      lostReason,
+      closedAt: status === "OPEN" ? null : new Date(),
       contactId: str(formData, "contactId"),
       companyId: str(formData, "companyId"),
       ownerId: str(formData, "ownerId") ?? user.id,
@@ -40,15 +54,34 @@ export async function createDeal(formData: FormData) {
   revalidatePath("/");
 }
 
-export async function moveDeal(dealId: string, stageId: string) {
+export async function moveDeal(dealId: string, stageId: string, lostReason?: string) {
   await requireUser();
-  const stage = await prisma.pipelineStage.findUnique({ where: { id: stageId } });
+  const [current, stage] = await Promise.all([
+    prisma.deal.findUnique({ where: { id: dealId }, select: { status: true } }),
+    prisma.pipelineStage.findUnique({ where: { id: stageId } }),
+  ]);
   if (!stage) return;
 
   const status = stage.isWon ? "WON" : stage.isLost ? "LOST" : "OPEN";
+
+  let reasonData: { lostReason?: string | null } = {};
+  if (status === "LOST") {
+    const provided = lostReason?.trim();
+    if (provided) reasonData = { lostReason: provided };
+    else if (current?.status !== "LOST") throw new Error(LOST_REASON_REQUIRED);
+  } else {
+    reasonData = { lostReason: null };
+  }
+
   await prisma.deal.update({
     where: { id: dealId },
-    data: { stageId, status, pipelineId: stage.pipelineId },
+    data: {
+      stageId,
+      status,
+      pipelineId: stage.pipelineId,
+      closedAt: nextClosedAt(current?.status, status),
+      ...reasonData,
+    },
   });
 
   revalidatePath("/deals");
@@ -68,9 +101,21 @@ export async function updateDeal(dealId: string, formData: FormData) {
   const stageId = str(formData, "stageId");
   if (!title || !stageId) throw new Error("Başlık ve aşama gerekli.");
 
-  const stage = await prisma.pipelineStage.findUnique({ where: { id: stageId } });
+  const [current, stage] = await Promise.all([
+    prisma.deal.findUnique({ where: { id: dealId }, select: { status: true } }),
+    prisma.pipelineStage.findUnique({ where: { id: stageId } }),
+  ]);
   const status = stage?.isWon ? "WON" : stage?.isLost ? "LOST" : "OPEN";
   const amount = Number(formData.get("amount") ?? 0) || 0;
+
+  let reasonData: { lostReason?: string | null } = {};
+  if (status === "LOST") {
+    const provided = str(formData, "lostReason");
+    if (provided) reasonData = { lostReason: provided };
+    else if (current?.status !== "LOST") throw new Error(LOST_REASON_REQUIRED);
+  } else {
+    reasonData = { lostReason: null };
+  }
 
   await prisma.deal.update({
     where: { id: dealId },
@@ -79,6 +124,8 @@ export async function updateDeal(dealId: string, formData: FormData) {
       amount,
       stageId,
       status,
+      closedAt: nextClosedAt(current?.status, status),
+      ...reasonData,
       pipelineId: stage?.pipelineId,
       contactId: str(formData, "contactId"),
       companyId: str(formData, "companyId"),

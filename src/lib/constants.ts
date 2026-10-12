@@ -22,6 +22,16 @@ export const FIELD_TYPES = [
   { value: "BOOLEAN", label: "Evet / Hayır" },
 ] as const;
 
+// Same wording as the Nimble "Lost reason" values so imported data matches 1:1.
+export const LOST_REASONS = [
+  "Yanıt alınamadı / Dönüş yok",
+  "Eğitim yapmaktan vazgeçildi / iptal",
+  "Yüksek Fiyat",
+  "Yetersiz içerik / ürün / hizmet",
+  "UNIQ yapmak istemedi",
+  "Diğer",
+] as const;
+
 export const DEAL_STATUS = {
   OPEN: "OPEN",
   WON: "WON",

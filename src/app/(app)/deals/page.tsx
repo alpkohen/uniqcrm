@@ -10,6 +10,7 @@ import { StageManager } from "@/components/stage-manager";
 import { SearchSelect } from "@/components/search-select";
 import { createDeal } from "@/actions/deals";
 import { parseDealRange } from "@/lib/deal-range";
+import { LOST_REASONS } from "@/lib/constants";
 
 function iso(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -59,6 +60,21 @@ export default async function DealsPage({
   const won = summarize((stage) => stage.isWon);
   const lost = summarize((stage) => stage.isLost);
   const openTotal = open.amount;
+  const reasonCounts = new Map<string, { count: number; amount: number }>();
+  for (const stage of pipeline?.stages ?? []) {
+    if (!stage.isLost) continue;
+    for (const deal of stage.deals) {
+      const key = deal.lostReason?.trim() || "Neden girilmemiş";
+      const entry = reasonCounts.get(key) ?? { count: 0, amount: 0 };
+      entry.count += 1;
+      entry.amount += deal.amount;
+      reasonCounts.set(key, entry);
+    }
+  }
+  const reasonRows = [...reasonCounts.entries()]
+    .map(([reason, value]) => ({ reason, ...value }))
+    .sort((a, b) => b.count - a.count);
+  const maxReason = Math.max(1, ...reasonRows.map((row) => row.count));
   const winRate = won.count + lost.count > 0 ? Math.round((won.count / (won.count + lost.count)) * 100) : null;
 
   const queryFor = (overrides: Record<string, string | undefined> = {}) => {
@@ -66,7 +82,7 @@ export default async function DealsPage({
       view: isListView ? "list" : undefined,
       from: range.from || undefined,
       to: range.to || undefined,
-      by: range.by === "updated" ? "updated" : undefined,
+      by: range.by === "closed" ? "closed" : undefined,
       ...overrides,
     };
     const params = new URLSearchParams();
@@ -87,7 +103,7 @@ export default async function DealsPage({
     { label: "Son 12 ay", ...presetRange(12) },
   ];
   const rangeLabel = range.active
-    ? `${range.from || "…"} – ${range.to || "…"} arası ${range.by === "updated" ? "güncellenen/kapanan" : "oluşturulan"} fırsatlar`
+    ? `${range.from || "…"} – ${range.to || "…"} arası ${range.by === "closed" ? "kapanan" : "oluşturulan"} fırsatlar`
     : "tüm zamanlar";
 
   return (
@@ -136,7 +152,7 @@ export default async function DealsPage({
           <span className="text-xs font-medium text-muted-foreground">Tarih alanı</span>
           <select name="by" defaultValue={range.by} className="field-select h-8">
             <option value="created">Oluşturulma tarihi</option>
-            <option value="updated">Son güncelleme / kapanış</option>
+            <option value="closed">Kapanış tarihi</option>
           </select>
         </label>
         <Button type="submit" variant="outline" size="sm">
@@ -186,6 +202,32 @@ export default async function DealsPage({
         </div>
       </div>
 
+      {reasonRows.length > 0 ? (
+        <section className="mb-4 rounded-xl border bg-card p-4">
+          <h2 className="mb-3 text-sm font-medium">Kaybetme nedenleri</h2>
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {reasonRows.map((row) => (
+              <div key={row.reason}>
+                <div className="mb-1 flex items-center justify-between gap-2 text-xs">
+                  <span className={row.reason === "Neden girilmemiş" ? "text-muted-foreground" : "font-medium"}>
+                    {row.reason}
+                  </span>
+                  <span className="tabular-nums text-muted-foreground">
+                    {row.count.toLocaleString("tr-TR")} · {formatTry(row.amount)}
+                  </span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-destructive/70"
+                    style={{ width: `${(row.count / maxReason) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {pipeline ? (
         isListView ? (
           <DealList
@@ -199,6 +241,7 @@ export default async function DealsPage({
               id: stage.id,
               name: stage.name,
               color: stage.color,
+              isLost: stage.isLost,
               items: stage.deals,
             }))}
           />
@@ -238,6 +281,17 @@ export default async function DealsPage({
               {pipeline?.stages.map((stage) => (
                 <option key={stage.id} value={stage.id}>
                   {stage.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1.5 text-sm">
+            <span className="font-medium">Kayıp nedeni</span>
+            <select name="lostReason" defaultValue="" className="field-select">
+              <option value="">— (Kaybedildi aşamasında zorunlu)</option>
+              {LOST_REASONS.map((reason) => (
+                <option key={reason} value={reason}>
+                  {reason}
                 </option>
               ))}
             </select>

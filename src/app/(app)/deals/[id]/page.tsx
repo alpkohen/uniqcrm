@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
-import { formatDateTime, formatFileSize, formatTry, fullName } from "@/lib/format";
+import { formatDate, formatDateTime, formatFileSize, formatTry, fullName } from "@/lib/format";
+import { LOST_REASONS } from "@/lib/constants";
 import { PageHeader } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { SearchSelect } from "@/components/search-select";
@@ -43,7 +44,7 @@ export default async function DealDetailPage({
     <div>
       <PageHeader
         title={deal.title}
-        description={`${deal.stage.name} · ${formatTry(deal.amount)}`}
+        description={`${deal.stage.name} · ${formatTry(deal.amount)}${deal.closedAt ? ` · kapanış ${formatDate(deal.closedAt)}` : ""}${deal.lostReason ? ` · ${deal.lostReason}` : ""}`}
         actions={
           <>
             <Button render={<Link href="/deals" />} nativeButton={false} variant="outline">
@@ -83,6 +84,20 @@ export default async function DealDetailPage({
                   {stage.name}
                 </option>
               ))}
+            </select>
+          </label>
+          <label className="grid gap-1.5 text-sm">
+            <span className="font-medium">Kayıp nedeni</span>
+            <select name="lostReason" defaultValue={deal.lostReason ?? ""} className="field-select">
+              <option value="">— (Kaybedildi aşamasında zorunlu)</option>
+              {LOST_REASONS.map((reason) => (
+                <option key={reason} value={reason}>
+                  {reason}
+                </option>
+              ))}
+              {deal.lostReason && !(LOST_REASONS as readonly string[]).includes(deal.lostReason) ? (
+                <option value={deal.lostReason}>{deal.lostReason}</option>
+              ) : null}
             </select>
           </label>
           <label className="grid gap-1.5 text-sm">
