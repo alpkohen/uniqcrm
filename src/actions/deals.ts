@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { deleteDealAttachmentFile, saveDealAttachment } from "@/lib/storage";
+import type { FormResult } from "@/lib/form-result";
 
 function str(formData: FormData, key: string) {
   const value = String(formData.get(key) ?? "").trim();
@@ -110,11 +111,11 @@ export async function deleteDeal(dealId: string) {
   revalidatePath("/");
 }
 
-export async function updateDeal(dealId: string, formData: FormData) {
+export async function updateDeal(dealId: string, formData: FormData): Promise<FormResult> {
   await requireUser();
   const title = str(formData, "title");
   const stageId = str(formData, "stageId");
-  if (!title || !stageId) throw new Error("Başlık ve aşama gerekli.");
+  if (!title || !stageId) return { error: "Başlık ve aşama gerekli." };
 
   const [current, stage] = await Promise.all([
     prisma.deal.findUnique({ where: { id: dealId }, select: { status: true } }),
@@ -127,7 +128,7 @@ export async function updateDeal(dealId: string, formData: FormData) {
   if (status === "LOST") {
     const provided = str(formData, "lostReason");
     if (provided) reasonData = { lostReason: provided };
-    else if (current?.status !== "LOST") throw new Error(LOST_REASON_REQUIRED);
+    else if (current?.status !== "LOST") return { error: LOST_REASON_REQUIRED };
   } else {
     reasonData = { lostReason: null };
   }
@@ -151,6 +152,7 @@ export async function updateDeal(dealId: string, formData: FormData) {
   revalidatePath(`/deals/${dealId}`);
   revalidatePath("/deals");
   revalidatePath("/");
+  return { ok: true };
 }
 
 const ALLOWED_ATTACHMENT_TYPES = new Set([

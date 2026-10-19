@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { deleteCompany, updateCompany } from "@/actions/companies";
 import { createDeal } from "@/actions/deals";
+import { SubmitButton, ToastForm } from "@/components/toast-form";
 
 export default async function CompanyDetailPage({
   params,
@@ -47,7 +48,7 @@ export default async function CompanyDetailPage({
         }
       />
       <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
-        <form action={update} className="grid gap-4 rounded-xl border bg-card p-5 sm:grid-cols-2">
+        <ToastForm action={update} successMessage="Firma güncellendi." className="grid gap-4 rounded-xl border bg-card p-5 sm:grid-cols-2">
           <label className="grid gap-1.5 text-sm sm:col-span-2">
             <span className="font-medium">Firma adı</span>
             <input name="name" required defaultValue={company.name} className="field-input" />
@@ -95,9 +96,9 @@ export default async function CompanyDetailPage({
             <textarea name="notes" defaultValue={company.notes ?? ""} className="field-textarea" />
           </label>
           <div className="sm:col-span-2">
-            <Button type="submit">Güncelle</Button>
+            <SubmitButton>Güncelle</SubmitButton>
           </div>
-        </form>
+        </ToastForm>
         <div className="grid gap-6">
           <section className="rounded-xl border bg-card p-5">
             <h2 className="mb-3 text-sm font-medium text-muted-foreground">Kişiler</h2>

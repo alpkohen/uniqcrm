@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import type { FormResult } from "@/lib/form-result";
 
 function str(formData: FormData, key: string) {
   const value = String(formData.get(key) ?? "").trim();
@@ -66,12 +67,12 @@ export async function createContact(formData: FormData) {
   redirect(`/contacts/${contact.id}`);
 }
 
-export async function updateContact(contactId: string, formData: FormData) {
+export async function updateContact(contactId: string, formData: FormData): Promise<FormResult> {
   const user = await requireUser();
   const firstName = str(formData, "firstName");
   const lastName = str(formData, "lastName");
   if (!firstName || !lastName) {
-    throw new Error("Ad ve soyad gerekli.");
+    return { error: "Ad ve soyad gerekli." };
   }
 
   const email = str(formData, "email");
@@ -80,7 +81,7 @@ export async function updateContact(contactId: string, formData: FormData) {
       where: { email: { equals: email, mode: "insensitive" }, id: { not: contactId } },
     });
     if (existing) {
-      throw new Error(`Bu e-posta ile kayıtlı bir kişi zaten var: ${existing.firstName} ${existing.lastName}`);
+      return { error: `Bu e-posta ile kayıtlı bir kişi zaten var: ${existing.firstName} ${existing.lastName}` };
     }
   }
 
@@ -109,6 +110,7 @@ export async function updateContact(contactId: string, formData: FormData) {
 
   revalidatePath("/contacts");
   revalidatePath(`/contacts/${contactId}`);
+  return { ok: true };
 }
 
 export async function deleteContact(contactId: string) {

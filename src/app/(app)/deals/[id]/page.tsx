@@ -7,6 +7,7 @@ import { LOST_REASONS } from "@/lib/constants";
 import { PageHeader } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { SearchSelect } from "@/components/search-select";
+import { SubmitButton, ToastForm } from "@/components/toast-form";
 import {
   deleteDeal,
   deleteDealAttachment,
@@ -60,7 +61,7 @@ export default async function DealDetailPage({
       />
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <form action={update} className="grid gap-3 rounded-xl border bg-card p-5">
+        <ToastForm action={update} successMessage="Fırsat güncellendi." className="grid gap-3 rounded-xl border bg-card p-5">
           <h2 className="mb-1 text-sm font-medium text-muted-foreground">Fırsat</h2>
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">Başlık</span>
@@ -133,9 +134,9 @@ export default async function DealDetailPage({
             </select>
           </label>
           <div className="mt-2">
-            <Button type="submit">Güncelle</Button>
+            <SubmitButton>Güncelle</SubmitButton>
           </div>
-        </form>
+        </ToastForm>
 
         <section className="rounded-xl border bg-card p-5">
           <h2 className="mb-3 text-sm font-medium text-muted-foreground">

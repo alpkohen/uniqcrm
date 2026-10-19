@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { deleteContact, updateContact } from "@/actions/contacts";
 import { createActivity, createTask } from "@/actions/activities";
+import { SubmitButton, ToastForm } from "@/components/toast-form";
 
 export default async function ContactDetailPage({
   params,
@@ -69,7 +70,7 @@ export default async function ContactDetailPage({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <form action={update} className="rounded-xl border bg-card p-5">
+        <ToastForm action={update} successMessage="Kişi güncellendi." className="rounded-xl border bg-card p-5">
           <h2 className="mb-4 text-sm font-medium text-muted-foreground">Kart</h2>
           <ContactFields
             users={users}
@@ -90,9 +91,9 @@ export default async function ContactDetailPage({
             }}
           />
           <div className="mt-6">
-            <Button type="submit">Güncelle</Button>
+            <SubmitButton>Güncelle</SubmitButton>
           </div>
-        </form>
+        </ToastForm>
 
         <div className="grid gap-6">
           <section className="rounded-xl border bg-card p-5">

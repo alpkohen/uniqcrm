@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import type { FormResult } from "@/lib/form-result";
 
 function str(formData: FormData, key: string) {
   const value = String(formData.get(key) ?? "").trim();
@@ -40,18 +41,18 @@ export async function createCompany(formData: FormData) {
   redirect(`/companies/${company.id}`);
 }
 
-export async function updateCompany(companyId: string, formData: FormData) {
+export async function updateCompany(companyId: string, formData: FormData): Promise<FormResult> {
   const user = await requireUser();
   const name = str(formData, "name");
-  if (!name) throw new Error("Firma adı gerekli.");
+  if (!name) return { error: "Firma adı gerekli." };
   const sector = str(formData, "sector");
-  if (!sector) throw new Error("Sektör gerekli.");
+  if (!sector) return { error: "Sektör gerekli." };
 
   const existing = await prisma.company.findFirst({
     where: { name: { equals: name, mode: "insensitive" }, id: { not: companyId } },
   });
   if (existing) {
-    throw new Error(`Bu isimde bir firma zaten var: ${existing.name}`);
+    return { error: `Bu isimde bir firma zaten var: ${existing.name}` };
   }
 
   await prisma.company.update({
@@ -69,6 +70,7 @@ export async function updateCompany(companyId: string, formData: FormData) {
 
   revalidatePath("/companies");
   revalidatePath(`/companies/${companyId}`);
+  return { ok: true };
 }
 
 export async function deleteCompany(companyId: string) {
