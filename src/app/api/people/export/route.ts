@@ -15,7 +15,10 @@ export async function GET(request: Request) {
   const snapshot = needsTitleFilter(filters) ? await loadSnapshot() : null;
   const contacts = await prisma.contact.findMany({
     where: await buildPeopleWhere(filters, snapshot),
-    include: { company: { select: { name: true, sector: true } } },
+    include: {
+      company: { select: { name: true, sector: true } },
+      tags: { include: { tag: { select: { name: true } } } },
+    },
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
   });
 
@@ -32,6 +35,7 @@ export async function GET(request: Request) {
       Firma: contact.company?.name ?? "",
       Sektör: contact.company?.sector ?? "",
       Şehir: contact.city ?? "",
+      Etiketler: contact.tags.map(({ tag: item }) => item.name).join(", "),
       "Mail almak istemiyor": isMailOptOut(contact.customData, optOutKey) ? "Evet" : "",
     };
   });

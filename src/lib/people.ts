@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { buildContactWhere } from "@/lib/contact-filters";
 import {
@@ -26,6 +26,7 @@ export const SEGMENTS = [
 export type SegmentKey = (typeof SEGMENTS)[number]["key"];
 
 export const NO_SECTOR = "__none";
+export const NO_TAG = "__none";
 
 export type PeopleFilters = {
   level: LevelKey | "";
@@ -33,6 +34,7 @@ export type PeopleFilters = {
   sector: string;
   seg: SegmentKey;
   q: string;
+  tag: string;
 };
 
 type RawParams = Record<string, string | string[] | undefined>;
@@ -51,6 +53,7 @@ export function parsePeopleFilters(params: RawParams): PeopleFilters {
     sector: first(params.sector)?.trim() ?? "",
     seg: SEGMENTS.some((s) => s.key === seg) ? (seg as SegmentKey) : "all",
     q: first(params.q)?.trim() ?? "",
+    tag: first(params.tag)?.trim() ?? "",
   };
 }
 
@@ -70,7 +73,15 @@ export type SnapshotRow = {
   n: number;
 };
 
-export async function loadSnapshot(): Promise<SnapshotRow[]> {
+// `tag` scopes the snapshot to contacts carrying that tag (or no tag at all for NO_TAG), so the
+// seniority/department/sector facets and segment counts follow the tag filter.
+export async function loadSnapshot(tag = ""): Promise<SnapshotRow[]> {
+  const tagFilter =
+    tag === NO_TAG
+      ? Prisma.sql`WHERE NOT EXISTS (SELECT 1 FROM "ContactTag" ct WHERE ct."contactId" = c.id)`
+      : tag
+        ? Prisma.sql`WHERE EXISTS (SELECT 1 FROM "ContactTag" ct WHERE ct."contactId" = c.id AND ct."tagId" = ${tag})`
+        : Prisma.empty;
   const rows = await prisma.$queryRaw<
     {
       title: string | null;
@@ -90,6 +101,7 @@ export async function loadSnapshot(): Promise<SnapshotRow[]> {
       COUNT(*)::int AS n
     FROM "Contact" c
     LEFT JOIN "Company" co ON co.id = c."companyId"
+    ${tagFilter}
     GROUP BY 1, 2, 3, 4, 5
   `;
   return rows.map((r) => ({
@@ -222,8 +234,13 @@ export function computeFacets(snapshot: SnapshotRow[], f: PeopleFilters) {
 export async function buildPeopleWhere(
   f: PeopleFilters,
   snapshot: SnapshotRow[] | null,
+  options: { skipTag?: boolean } = {},
 ): Promise<Prisma.ContactWhereInput> {
   const and: Prisma.ContactWhereInput[] = [];
+
+  if (f.tag && !options.skipTag) {
+    and.push(f.tag === NO_TAG ? { tags: { none: {} } } : { tags: { some: { tagId: f.tag } } });
+  }
 
   if (f.q) and.push(await buildContactWhere({ q: f.q, tag: "", owner: "" }));
   if (f.seg === "email") and.push({ AND: [{ email: { not: null } }, { email: { not: "" } }] });

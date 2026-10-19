@@ -15,6 +15,7 @@ import {
   needsTitleFilter,
   parsePeopleFilters,
   NO_SECTOR,
+  NO_TAG,
   type PeopleFilters,
 } from "@/lib/people";
 import { classifyTitle, deptMeta, levelMeta } from "@/lib/title-groups";
@@ -39,6 +40,7 @@ function queryString(f: PeopleFilters, overrides: Partial<Record<keyof PeopleFil
     level: f.level,
     dept: f.dept,
     sector: f.sector,
+    tag: f.tag,
     seg: f.seg === "all" ? "" : f.seg,
     q: f.q,
     page: "",
@@ -79,6 +81,21 @@ export default async function PeoplePage({
   };
 
   const snapshotPromise = loadSnapshot();
+  // With a tag selected the facets and segment counts describe only that tag's contacts.
+  const scopedPromise = f.tag ? loadSnapshot(f.tag) : snapshotPromise;
+
+  // Tag facet: counted against every other active filter but not the tag itself.
+  const tagFacetPromise = (async () => {
+    const base = await buildPeopleWhere(f, needsTitleFilter(f) ? await snapshotPromise : null, { skipTag: true });
+    const [groups, allTags, untagged, baseTotal] = await Promise.all([
+      prisma.contactTag.groupBy({ by: ["tagId"], where: { contact: base }, _count: { _all: true } }),
+      prisma.tag.findMany({ orderBy: { name: "asc" } }),
+      prisma.contact.count({ where: { AND: [base, { tags: { none: {} } }] } }),
+      prisma.contact.count({ where: base }),
+    ]);
+    const counts = new Map(groups.map((g) => [g.tagId, g._count._all]));
+    return { allTags, counts, untagged, baseTotal };
+  })();
   const insightsPromise = Promise.all([loadMonthlyAdds(12), loadTopCompanies(8)]);
 
   const fetchList = async (snapshot: Awaited<typeof snapshotPromise> | null) => {
@@ -97,20 +114,23 @@ export default async function PeoplePage({
 
   // The seniority/department filters are resolved to exact title strings from the
   // snapshot, so the list query has to wait for it; every other case runs in parallel.
-  const listPromise = needsTitleFilter(f) ? snapshotPromise.then(fetchList) : fetchList(null);
+  const listPromise = needsTitleFilter(f) ? scopedPromise.then(fetchList) : fetchList(null);
 
-  const [snapshot, [monthly, topCompanies], [total, contacts]] = await Promise.all([
+  const [snapshot, scoped, [monthly, topCompanies], [total, contacts], tagFacet] = await Promise.all([
     snapshotPromise,
+    scopedPromise,
     insightsPromise,
     listPromise,
+    tagFacetPromise,
   ]);
 
-  const { stats, segmentCounts } = computePeopleStats(snapshot);
-  const facets = computeFacets(snapshot, f);
+  const { stats } = computePeopleStats(snapshot);
+  const { segmentCounts } = computePeopleStats(scoped);
+  const facets = computeFacets(scoped, f);
 
   const toEntries = (
     items: { key: string; label: string; color: string; count: number }[],
-    param: "level" | "dept" | "sector"
+    param: "level" | "dept" | "sector" | "tag"
   ): FacetEntry[] =>
     items.map((item) => {
       const active = f[param] === item.key;
@@ -122,6 +142,15 @@ export default async function PeoplePage({
   const sectorEntries = toEntries(facets.sectors, "sector");
   const sum = (entries: FacetEntry[]) => entries.reduce((n, e) => n + e.count, 0);
 
+  const tagItems = [
+    ...tagFacet.allTags.map((t) => ({ key: t.id, label: t.name, color: t.color, count: tagFacet.counts.get(t.id) ?? 0 })),
+    { key: NO_TAG, label: "Etiketsiz", color: "#94a3b8", count: tagFacet.untagged },
+  ]
+    .filter((i) => i.count > 0 || i.key === f.tag)
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "tr"));
+  const tagEntries = toEntries(tagItems, "tag");
+  const activeTagLabel = tagItems.find((i) => i.key === f.tag)?.label ?? f.tag;
+
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const exportQuery = queryString(f);
 
@@ -129,6 +158,7 @@ export default async function PeoplePage({
   if (f.level) chips.push({ label: `Unvan: ${levelMeta(f.level).label}`, href: hrefFor({ level: "" }) });
   if (f.dept) chips.push({ label: `Bölüm: ${deptMeta(f.dept).label}`, href: hrefFor({ dept: "" }) });
   if (f.sector) chips.push({ label: `Sektör: ${f.sector === NO_SECTOR ? "girilmemiş" : f.sector}`, href: hrefFor({ sector: "" }) });
+  if (f.tag) chips.push({ label: `Etiket: ${activeTagLabel}`, href: hrefFor({ tag: "" }) });
   if (f.q) chips.push({ label: `Arama: “${f.q}”`, href: hrefFor({ q: "" }) });
 
   const maxMonthly = Math.max(1, ...monthly.map((m) => m.count));
@@ -146,7 +176,7 @@ export default async function PeoplePage({
     <div>
       <PageHeader
         title="Kişi Analizi"
-        description="Unvan, bölüm ve sektör kırılımında ağınız. Bir gruba tıklayın, ortadaki liste o gruba göre süzülsün."
+        description="Unvan, bölüm, sektör ve etiket kırılımında ağınız. Bir gruba tıklayın, ortadaki liste o gruba göre süzülsün."
         actions={
           <>
             <Button
@@ -222,6 +252,13 @@ export default async function PeoplePage({
             total={sum(deptEntries)}
           />
           <PeopleFacetCard
+            title="Etiketler"
+            hint="Bir kişide birden çok etiket olabilir"
+            items={tagEntries}
+            total={tagFacet.baseTotal}
+            visible={8}
+          />
+          <PeopleFacetCard
             title="Sektörler"
             hint="Kişinin firmasının sektörü"
             items={sectorEntries}
@@ -242,6 +279,7 @@ export default async function PeoplePage({
               {f.level ? <input type="hidden" name="level" value={f.level} /> : null}
               {f.dept ? <input type="hidden" name="dept" value={f.dept} /> : null}
               {f.sector ? <input type="hidden" name="sector" value={f.sector} /> : null}
+              {f.tag ? <input type="hidden" name="tag" value={f.tag} /> : null}
               {f.seg !== "all" ? <input type="hidden" name="seg" value={f.seg} /> : null}
               <input
                 name="q"
