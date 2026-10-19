@@ -1,5 +1,5 @@
 import type { CustomField, Tag, User } from "@prisma/client";
-import { SearchSelect } from "@/components/search-select";
+import { CompanySelect } from "@/components/company-select";
 import { TagPicker } from "@/components/tag-picker";
 
 export function ContactFields({
@@ -56,10 +56,8 @@ export function ContactFields({
       </label>
       <label className="grid gap-1.5 text-sm">
         <span className="font-medium">Firma</span>
-        <SearchSelect
+        <CompanySelect
           name="companyId"
-          searchUrl="/api/companies/search"
-          placeholder="Firma ara..."
           defaultValue={
             values?.companyId && values?.companyName
               ? { id: values.companyId, label: values.companyName }
