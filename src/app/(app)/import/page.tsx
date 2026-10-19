@@ -6,8 +6,12 @@ import { DealCsvImport } from "@/components/deal-csv-import";
 import { DealUpdateImport } from "@/components/deal-update-import";
 import { MailOptOutImport } from "@/components/mail-optout-import";
 import { TagByEmailImport } from "@/components/tag-by-email-import";
+import { DeleteByEmailImport } from "@/components/delete-by-email-import";
+import { requireUser } from "@/lib/session";
 
-export default function ImportPage() {
+export default async function ImportPage() {
+  const user = await requireUser();
+  const isAdmin = user.role === "ADMIN";
   return (
     <div className="mx-auto max-w-3xl grid gap-10">
       <div>
@@ -55,6 +59,16 @@ export default function ImportPage() {
         </p>
         <TagByEmailImport />
       </div>
+
+      {isAdmin ? (
+        <div>
+          <h2 className="mb-1 text-sm font-medium text-destructive">E-posta listesinden kişi sil</h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Yalnızca yöneticiler. Geri alınamaz; önizleme ve zorunlu yedek adımı vardır.
+          </p>
+          <DeleteByEmailImport />
+        </div>
+      ) : null}
     </div>
   );
 }
