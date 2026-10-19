@@ -5,6 +5,7 @@ import { CompanyCsvImport } from "@/components/company-csv-import";
 import { DealCsvImport } from "@/components/deal-csv-import";
 import { DealUpdateImport } from "@/components/deal-update-import";
 import { MailOptOutImport } from "@/components/mail-optout-import";
+import { TagByEmailImport } from "@/components/tag-by-email-import";
 
 export default function ImportPage() {
   return (
@@ -45,6 +46,14 @@ export default function ImportPage() {
           “Mail almak istemiyor” işaretli kişileri CRM’de de işaretler. Önce önizleme gösterir.
         </p>
         <MailOptOutImport />
+      </div>
+
+      <div>
+        <h2 className="mb-1 text-sm font-medium">E-posta listesinden etiket ekle</h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Örn. doğrulama sonucu “risky” çıkan adreslere risky etiketi ekler. Önce önizleme gösterir.
+        </p>
+        <TagByEmailImport />
       </div>
     </div>
   );
