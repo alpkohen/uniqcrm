@@ -142,6 +142,7 @@ export async function updateDeal(dealId: string, formData: FormData): Promise<Fo
       status,
       closedAt: nextClosedAt(current?.status, status),
       ...reasonData,
+      notes: str(formData, "notes"),
       pipelineId: stage?.pipelineId,
       contactId: str(formData, "contactId"),
       companyId: str(formData, "companyId"),

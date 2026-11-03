@@ -133,6 +133,15 @@ export default async function DealDetailPage({
               ))}
             </select>
           </label>
+          <label className="grid gap-1.5 text-sm">
+            <span className="font-medium">Notlar</span>
+            <textarea
+              name="notes"
+              defaultValue={deal.notes ?? ""}
+              placeholder="Görüşme notları, kayıp nedeni detayı, sonraki adımlar…"
+              className="field-textarea min-h-32"
+            />
+          </label>
           <div className="mt-2">
             <SubmitButton>Güncelle</SubmitButton>
           </div>
