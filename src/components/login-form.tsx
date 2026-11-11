@@ -16,7 +16,6 @@ export function LoginForm() {
           type="email"
           required
           autoComplete="username"
-          defaultValue="ayse@uniq.com.tr"
           className="field-input h-9"
         />
       </label>
@@ -27,7 +26,6 @@ export function LoginForm() {
           type="password"
           required
           autoComplete="current-password"
-          defaultValue="Uniq2026!"
           className="field-input h-9"
         />
       </label>
