@@ -5,6 +5,8 @@ import { SESSION_COOKIE } from "@/lib/constants";
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isLogin = path === "/login";
+  // Health check used by the keep-alive job; it returns no data.
+  if (path === "/api/health") return NextResponse.next();
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   const session = await decryptSession(token);
 
