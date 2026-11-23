@@ -256,7 +256,6 @@ export default async function CompanyAnalysisPage({
                   <tr>
                     {sortHeader("name", "Firma")}
                     {sortHeader("sector", "Sektör")}
-                    {sortHeader("city", "Şehir")}
                     {sortHeader("contacts", "Kişi", "text-right")}
                     {sortHeader("open", "Açık fırsat", "text-right")}
                     {sortHeader("won", "Kazanılan", "text-right")}
@@ -289,7 +288,6 @@ export default async function CompanyAnalysisPage({
                         ) : null}
                       </td>
                       <td className="px-4 py-2.5">{row.sector ?? <span className="text-muted-foreground">—</span>}</td>
-                      <td className="px-4 py-2.5">{row.city ?? <span className="text-muted-foreground">—</span>}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums">{row.contacts > 0 ? num(row.contacts) : <span className="text-muted-foreground">—</span>}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums">{row.openDeals > 0 ? num(row.openDeals) : <span className="text-muted-foreground">—</span>}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums">
