@@ -111,20 +111,14 @@ export function CompanySelect({
             </label>
             <label className="grid gap-1.5">
               <span className="font-medium">Sektör</span>
-              <input
-                value={sector}
-                onChange={(event) => setSector(event.target.value)}
-                onKeyDown={onEnter}
-                list="quick-company-sectors"
-                placeholder="Seçin veya yazın"
-                className="field-input"
-                autoFocus
-              />
-              <datalist id="quick-company-sectors">
+              <select value={sector} onChange={(event) => setSector(event.target.value)} className="field-select" autoFocus>
+                <option value="">Sektör seçin…</option>
                 {sectors.map((item) => (
-                  <option key={item} value={item} />
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
                 ))}
-              </datalist>
+              </select>
             </label>
             <div className="grid gap-3 sm:grid-cols-3">
               <label className="grid gap-1.5">

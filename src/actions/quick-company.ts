@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
-import { listDistinctSectors } from "@/lib/sectors";
+import { isKnownSector, listDistinctSectors } from "@/lib/sectors";
 import { normalizeCompanyName } from "@/lib/company-name";
 
 export type QuickCompanyInput = {
@@ -33,6 +33,7 @@ export async function quickCreateCompany(input: QuickCompanyInput): Promise<Quic
 
   if (name.length < 2) return { error: "Firma adı gerekli." };
   if (!sector) return { error: "Sektör gerekli." };
+  if (!(await isKnownSector(sector))) return { error: "Sektör listeden seçilmeli." };
 
   const key = normalizeCompanyName(name);
   const companies = await prisma.company.findMany({ select: { id: true, name: true } });

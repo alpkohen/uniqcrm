@@ -9,3 +9,9 @@ export async function listDistinctSectors(): Promise<string[]> {
   });
   return rows.map((row) => row.sector!).filter(Boolean);
 }
+
+// Sectors can only be picked from the ones already in use; `current` lets a company keep its own legacy value.
+export async function isKnownSector(sector: string, current?: string | null) {
+  if (current && sector === current) return true;
+  return (await listDistinctSectors()).includes(sector);
+}

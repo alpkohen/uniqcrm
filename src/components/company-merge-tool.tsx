@@ -178,12 +178,6 @@ export function CompanyMergeTool({ groups, sectors }: { groups: MergeGroup[]; se
         </div>
       </div>
 
-      <datalist id="merge-sectors">
-        {sectors.map((item) => (
-          <option key={item} value={item} />
-        ))}
-      </datalist>
-
       <ul className="grid gap-3">
         {shown.map((g) => {
           const s = state[g.key];
@@ -196,14 +190,19 @@ export function CompanyMergeTool({ groups, sectors }: { groups: MergeGroup[]; se
                 </label>
                 <label className="flex items-center gap-2 text-xs text-muted-foreground">
                   Sektör
-                  <input
+                  <select
                     value={s.sector ?? defaultSector(g, s.primaryId)}
                     onChange={(e) => patch(g.key, { sector: e.target.value })}
                     disabled={!s.included}
-                    list="merge-sectors"
-                    placeholder="Sektör"
-                    className="field-input h-8 w-56 text-sm text-foreground"
-                  />
+                    className="field-select h-8 w-56 text-sm text-foreground"
+                  >
+                    <option value="">Sektör seçin…</option>
+                    {sectors.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className="flex items-center gap-2 text-xs text-muted-foreground">
                   Birleşik firma adı

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { normalizeCompanyName } from "@/lib/company-name";
+import { isKnownSector } from "@/lib/sectors";
 
 // `sector` is the sector chosen for the merged company; when empty, the kept company's sector (or the first one found) is used.
 export type MergeSelection = { primaryId: string; name: string; mergeIds: string[]; sector?: string };
@@ -111,6 +112,9 @@ export async function mergeCompanyGroups(selection: MergeSelection[], confirm: s
 
   const { error, groups } = await resolve(selection);
   if (error) return { ...empty, error };
+  for (const { sel } of groups) {
+    if (sel.sector?.trim() && !(await isKnownSector(sel.sector.trim()))) return { ...empty, error: "Sektör listeden seçilmeli." };
+  }
 
   const total = { ...empty };
   for (const { sel, primary, others } of groups) {

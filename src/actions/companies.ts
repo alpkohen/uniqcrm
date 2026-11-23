@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import type { FormResult } from "@/lib/form-result";
+import { isKnownSector } from "@/lib/sectors";
 
 function str(formData: FormData, key: string) {
   const value = String(formData.get(key) ?? "").trim();
@@ -17,6 +18,7 @@ export async function createCompany(formData: FormData) {
   if (!name) throw new Error("Firma adı gerekli.");
   const sector = str(formData, "sector");
   if (!sector) throw new Error("Sektör gerekli.");
+  if (!(await isKnownSector(sector))) throw new Error("Sektör listeden seçilmeli.");
 
   const existing = await prisma.company.findFirst({
     where: { name: { equals: name, mode: "insensitive" } },
@@ -47,6 +49,8 @@ export async function updateCompany(companyId: string, formData: FormData): Prom
   if (!name) return { error: "Firma adı gerekli." };
   const sector = str(formData, "sector");
   if (!sector) return { error: "Sektör gerekli." };
+  const currentSector = (await prisma.company.findUnique({ where: { id: companyId }, select: { sector: true } }))?.sector;
+  if (!(await isKnownSector(sector, currentSector))) return { error: "Sektör listeden seçilmeli." };
 
   const existing = await prisma.company.findFirst({
     where: { name: { equals: name, mode: "insensitive" }, id: { not: companyId } },
