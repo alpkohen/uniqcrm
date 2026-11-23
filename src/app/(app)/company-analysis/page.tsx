@@ -65,7 +65,8 @@ export default async function CompanyAnalysisPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireUser();
+  const user = await requireUser();
+  const isAdmin = user.role === "ADMIN";
   const sp = await searchParams;
   const f = parseCompanyFilters(sp);
   const page = Math.max(1, Number(Array.isArray(sp.page) ? sp.page[0] : sp.page) || 1);
@@ -394,9 +395,16 @@ export default async function CompanyAnalysisPage({
                 Büyük/küçük harf, Türkçe karakter ve “A.Ş. / Ltd.” gibi eklere bakmadan aynı görünen firmalar. {num(stats.dupGroups)} grup.
               </p>
             </div>
-            <Link href={hrefFor({ seg: "dup" })} prefetch={false} className="text-xs underline-offset-2 hover:underline">
-              Hepsini listele
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link href={hrefFor({ seg: "dup" })} prefetch={false} className="text-xs underline-offset-2 hover:underline">
+                Hepsini listele
+              </Link>
+              {isAdmin ? (
+                <Button render={<Link href="/company-analysis/merge" />} size="sm" nativeButton={false}>
+                  Birleştirme aracını aç
+                </Button>
+              ) : null}
+            </div>
           </div>
           <ul className="grid gap-2 sm:grid-cols-2">
             {dupes.map((group) => (
