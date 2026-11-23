@@ -10,11 +10,13 @@ import { Button } from "@/components/ui/button";
 export function ToastForm({
   action,
   successMessage = "Kaydedildi.",
+  confirmMessage,
   className,
   children,
 }: {
   action: (formData: FormData) => Promise<FormResult | void>;
   successMessage?: string;
+  confirmMessage?: string;
   className?: string;
   children: ReactNode;
 }) {
@@ -30,7 +32,11 @@ export function ToastForm({
   }, null);
 
   return (
-    <form action={formAction} className={className}>
+    <form
+      action={formAction}
+      className={className}
+      onSubmit={confirmMessage ? (event) => { if (!window.confirm(confirmMessage)) event.preventDefault(); } : undefined}
+    >
       {children}
     </form>
   );

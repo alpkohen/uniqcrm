@@ -12,15 +12,23 @@ import {
   deleteTag,
 } from "@/actions/settings";
 import { createUser, deleteUser, resetUserPassword, updateUserRole } from "@/actions/users";
+import { clearSector, renameSector } from "@/actions/sectors";
+import { ToastForm } from "@/components/toast-form";
+import Link from "next/link";
 
 export default async function SettingsPage() {
   const user = await requireUser();
   const isAdmin = user.role === "ADMIN";
-  const [tags, fields, users] = await Promise.all([
+  const [tags, fields, users, sectorGroups] = await Promise.all([
     prisma.tag.findMany({ orderBy: { name: "asc" }, include: { _count: { select: { contacts: true } } } }),
     prisma.customField.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.user.findMany({ orderBy: { name: "asc" } }),
+    prisma.company.groupBy({ by: ["sector"], where: { sector: { not: null } }, _count: { _all: true } }),
   ]);
+  const sectors = sectorGroups
+    .filter((g) => g.sector !== null && g.sector.trim() !== "")
+    .map((g) => ({ name: g.sector as string, count: g._count._all }))
+    .sort((a, b) => a.name.localeCompare(b.name, "tr"));
 
   return (
     <div className="grid gap-8">
@@ -109,6 +117,59 @@ export default async function SettingsPage() {
           </ActionForm>
         ) : null}
       </section>
+
+      {isAdmin ? (
+        <section className="rounded-xl border bg-card p-5">
+          <h2 className="text-base font-medium">Sektörler</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Firmalarda kullanılan sektörler. Hatalı ya da farklı yazılmış bir sektörü yeniden adlandırın; mevcut bir sektörün adını yazarsanız
+            ikisi birleşir. “Temizle” o sektördeki firmaların sektörünü boşaltır.
+          </p>
+          <datalist id="settings-sectors">
+            {sectors.map((s) => (
+              <option key={s.name} value={s.name} />
+            ))}
+          </datalist>
+          <ul className="mt-4 divide-y">
+            {sectors.map((s) => (
+              <li key={s.name} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
+                <div>
+                  <p className="font-medium">{s.name}</p>
+                  <Link
+                    href={`/company-analysis?sector=${encodeURIComponent(s.name)}`}
+                    className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                  >
+                    {s.count} firma · firmaları gör
+                  </Link>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <ToastForm
+                    action={renameSector.bind(null, s.name)}
+                    successMessage="Sektör güncellendi."
+                    confirmMessage={`“${s.name}” sektörü ${s.count} firmada yeniden adlandırılacak. Devam edilsin mi?`}
+                    className="flex items-center gap-1.5"
+                  >
+                    <input name="to" list="settings-sectors" placeholder="Yeni ad" className="field-input h-8 w-44 text-xs" />
+                    <Button type="submit" size="sm" variant="outline">
+                      Yeniden adlandır
+                    </Button>
+                  </ToastForm>
+                  <ToastForm
+                    action={clearSector.bind(null, s.name)}
+                    successMessage="Sektör temizlendi."
+                    confirmMessage={`“${s.name}” sektörü ${s.count} firmadan kaldırılacak (firmalar “Sektörü eksik” olur). Devam edilsin mi?`}
+                    className="flex items-center"
+                  >
+                    <Button type="submit" size="sm" variant="ghost">
+                      Temizle
+                    </Button>
+                  </ToastForm>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="rounded-xl border bg-card p-5">
         <h2 className="text-base font-medium">Etiketler / segmentler</h2>
