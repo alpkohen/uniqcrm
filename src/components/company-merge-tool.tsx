@@ -20,11 +20,17 @@ function download(filename: string, base64: string) {
   URL.revokeObjectURL(url);
 }
 
-type State = { included: boolean; primaryId: string; name: string | null };
+type State = { included: boolean; primaryId: string; name: string | null; sector: string | null };
 
-export function CompanyMergeTool({ groups }: { groups: MergeGroup[] }) {
+// Sector the merged company gets unless edited: the kept company's own, else the first one among the others.
+function defaultSector(g: MergeGroup, primaryId: string) {
+  const primary = g.members.find((m) => m.id === primaryId);
+  return primary?.sector ?? g.members.find((m) => m.sector)?.sector ?? "";
+}
+
+export function CompanyMergeTool({ groups, sectors }: { groups: MergeGroup[]; sectors: string[] }) {
   const [state, setState] = useState<Record<string, State>>(() =>
-    Object.fromEntries(groups.map((g) => [g.key, { included: true, primaryId: g.suggestedId, name: null }])),
+    Object.fromEntries(groups.map((g) => [g.key, { included: true, primaryId: g.suggestedId, name: null, sector: null }])),
   );
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -46,6 +52,7 @@ export function CompanyMergeTool({ groups }: { groups: MergeGroup[] }) {
             primaryId: s.primaryId,
             name: s.name ?? g.members.find((m) => m.id === s.primaryId)!.name,
             mergeIds: g.members.filter((m) => m.id !== s.primaryId).map((m) => m.id),
+            sector: s.sector ?? defaultSector(g, s.primaryId),
           };
         }),
     [groups, state],
@@ -171,6 +178,12 @@ export function CompanyMergeTool({ groups }: { groups: MergeGroup[] }) {
         </div>
       </div>
 
+      <datalist id="merge-sectors">
+        {sectors.map((item) => (
+          <option key={item} value={item} />
+        ))}
+      </datalist>
+
       <ul className="grid gap-3">
         {shown.map((g) => {
           const s = state[g.key];
@@ -180,6 +193,17 @@ export function CompanyMergeTool({ groups }: { groups: MergeGroup[] }) {
                 <label className="flex items-center gap-2 text-sm font-medium">
                   <input type="checkbox" checked={s.included} onChange={(e) => patch(g.key, { included: e.target.checked })} />
                   Birleştir
+                </label>
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  Sektör
+                  <input
+                    value={s.sector ?? defaultSector(g, s.primaryId)}
+                    onChange={(e) => patch(g.key, { sector: e.target.value })}
+                    disabled={!s.included}
+                    list="merge-sectors"
+                    placeholder="Sektör"
+                    className="field-input h-8 w-56 text-sm text-foreground"
+                  />
                 </label>
                 <label className="flex items-center gap-2 text-xs text-muted-foreground">
                   Birleşik firma adı
@@ -202,7 +226,7 @@ export function CompanyMergeTool({ groups }: { groups: MergeGroup[] }) {
                             name={`keep-${g.key}`}
                             checked={s.primaryId === m.id}
                             disabled={!s.included}
-                            onChange={() => patch(g.key, { primaryId: m.id, name: null })}
+                            onChange={() => patch(g.key, { primaryId: m.id, name: null, sector: null })}
                           />
                           Kalacak
                         </label>

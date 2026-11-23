@@ -6,7 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { normalizeCompanyName } from "@/lib/company-name";
 
-export type MergeSelection = { primaryId: string; name: string; mergeIds: string[] };
+// `sector` is the sector chosen for the merged company; when empty, the kept company's sector (or the first one found) is used.
+export type MergeSelection = { primaryId: string; name: string; mergeIds: string[]; sector?: string };
 
 type Company = {
   id: string;
@@ -127,7 +128,7 @@ export async function mergeCompanyGroups(selection: MergeSelection[], confirm: s
       prisma.workflowCard.updateMany({ where: { companyId: { in: ids } }, data: { companyId: primary.id } }),
       prisma.company.update({
         where: { id: primary.id },
-        data: { name: sel.name.trim(), sector: pick("sector"), city: pick("city"), website: pick("website"), phone: pick("phone"), notes },
+        data: { name: sel.name.trim(), sector: sel.sector?.trim() || pick("sector"), city: pick("city"), website: pick("website"), phone: pick("phone"), notes },
       }),
       prisma.company.deleteMany({ where: { id: { in: ids } } }),
     ]);

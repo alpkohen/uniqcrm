@@ -2,13 +2,15 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/session";
 import { loadCompanyRows } from "@/lib/company-analysis";
 import { buildMergeGroups } from "@/lib/company-merge";
+import { listDistinctSectors } from "@/lib/sectors";
 import { PageHeader, EmptyState } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { CompanyMergeTool } from "@/components/company-merge-tool";
 
 export default async function CompanyMergePage() {
   await requireAdmin();
-  const groups = buildMergeGroups(await loadCompanyRows());
+  const [rows, sectors] = await Promise.all([loadCompanyRows(), listDistinctSectors()]);
+  const groups = buildMergeGroups(rows);
 
   return (
     <div>
@@ -24,7 +26,7 @@ export default async function CompanyMergePage() {
       {groups.length === 0 ? (
         <EmptyState title="Mükerrer firma yok" description="Aynı görünen firma bulunamadı." />
       ) : (
-        <CompanyMergeTool groups={groups} />
+        <CompanyMergeTool groups={groups} sectors={sectors} />
       )}
     </div>
   );
