@@ -4,6 +4,7 @@ import { createCompany } from "@/actions/companies";
 import { listDistinctSectors } from "@/lib/sectors";
 import { PageHeader } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
+import { SectorSelect } from "@/components/sector-select";
 
 export default async function NewCompanyPage() {
   const user = await requireUser();
@@ -34,18 +35,7 @@ export default async function NewCompanyPage() {
         </label>
         <label className="grid gap-1.5 text-sm">
           <span className="font-medium">Sektör</span>
-          <input
-            name="sector"
-            list="sector-options"
-            required
-            placeholder="Sektör seçin veya yazın"
-            className="field-input"
-          />
-          <datalist id="sector-options">
-            {sectors.map((sector) => (
-              <option key={sector} value={sector} />
-            ))}
-          </datalist>
+          <SectorSelect sectors={sectors} />
         </label>
         <label className="grid gap-1.5 text-sm sm:col-span-2">
           <span className="font-medium">Sahip</span>

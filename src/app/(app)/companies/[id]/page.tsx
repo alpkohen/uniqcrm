@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { deleteCompany, updateCompany } from "@/actions/companies";
 import { createDeal } from "@/actions/deals";
 import { SubmitButton, ToastForm } from "@/components/toast-form";
+import { SectorSelect } from "@/components/sector-select";
 
 export default async function CompanyDetailPage({
   params,
@@ -67,19 +68,7 @@ export default async function CompanyDetailPage({
           </label>
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">Sektör</span>
-            <input
-              name="sector"
-              list="sector-options"
-              required
-              defaultValue={company.sector ?? ""}
-              placeholder="Sektör seçin veya yazın"
-              className="field-input"
-            />
-            <datalist id="sector-options">
-              {sectors.map((sector) => (
-                <option key={sector} value={sector} />
-              ))}
-            </datalist>
+            <SectorSelect sectors={sectors} defaultValue={company.sector} />
           </label>
           <label className="grid gap-1.5 text-sm sm:col-span-2">
             <span className="font-medium">Sahip</span>
