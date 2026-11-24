@@ -14,6 +14,7 @@ export const SEGMENTS = [
   { key: "open", label: "Açık fırsatı olanlar" },
   { key: "won", label: "Müşteriler (kazanılmış)" },
   { key: "trained", label: "Geçmişte çalışılan" },
+  { key: "raise", label: "RAISE hedefleri" },
   { key: "nosector", label: "Sektörü eksik" },
   { key: "dup", label: "Olası mükerrer" },
 ] as const;
@@ -47,6 +48,7 @@ export type CompanyRow = {
   wonAmount: number;
   dupKey: string;
   dupCount: number;
+  raiseTarget: boolean;
   // Training history from the Data Analiz sheet, null when the company has none (or it could not be read).
   training: TrainingSummary | null;
 };
@@ -99,6 +101,7 @@ export async function loadCompanyRows(): Promise<CompanyRow[]> {
       won_deals: number;
       lost_deals: number;
       won_amount: number;
+      raise_target: boolean;
     }[]
   >`
     SELECT
@@ -112,7 +115,8 @@ export async function loadCompanyRows(): Promise<CompanyRow[]> {
       COALESCE(dd.open_deals, 0)::int AS open_deals,
       COALESCE(dd.won_deals, 0)::int AS won_deals,
       COALESCE(dd.lost_deals, 0)::int AS lost_deals,
-      COALESCE(dd.won_amount, 0)::bigint::float8 AS won_amount
+      COALESCE(dd.won_amount, 0)::bigint::float8 AS won_amount,
+      co."raiseTarget" AS raise_target
     FROM "Company" co
     JOIN "User" u ON u.id = co."ownerId"
     LEFT JOIN (
@@ -151,6 +155,7 @@ export async function loadCompanyRows(): Promise<CompanyRow[]> {
     wonAmount: Number(r.won_amount),
     dupKey,
     dupCount: groups.get(dupKey) ?? 1,
+    raiseTarget: r.raise_target,
     training: null,
   }));
 }
@@ -202,6 +207,8 @@ function segmentPasses(row: CompanyRow, seg: SegmentKey) {
       return row.wonDeals > 0;
     case "trained":
       return row.training !== null;
+    case "raise":
+      return row.raiseTarget;
     case "nosector":
       return !row.sector;
     case "dup":
@@ -356,6 +363,7 @@ export function computeStats(rows: CompanyRow[]) {
     open: withOpen,
     won: customers,
     trained,
+    raise: rows.filter((r) => r.raiseTarget).length,
     nosector: rows.length - withSector,
     dup: rows.filter((r) => r.dupCount > 1).length,
   };

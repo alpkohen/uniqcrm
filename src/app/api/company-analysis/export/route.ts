@@ -11,6 +11,7 @@ export async function GET(request: Request) {
   await attachTraining(all);
   const rows = sortRows(filterRows(all, filters), filters).map((row) => ({
     Firma: row.name,
+    "RAISE hedefi": row.raiseTarget ? "Evet" : "",
     Sektör: row.sector ?? "",
     Şehir: row.city ?? "",
     "Kişi sayısı": row.contacts,

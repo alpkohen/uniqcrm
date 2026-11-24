@@ -24,6 +24,7 @@ import { PageHeader, EmptyState, Pagination } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { PeopleFacetCard, type FacetEntry } from "@/components/people-facet-card";
 import { LinkPending } from "@/components/link-pending";
+import { RaiseToggle } from "@/components/raise-toggle";
 import { cn } from "cn";
 
 const MONTH_LABELS = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
@@ -155,6 +156,12 @@ export default async function CompanyAnalysisPage({
               <Download />
               Listeyi dışa aktar
             </Button>
+            {segmentCounts.raise > 0 ? (
+              <Button render={<a href="/api/raise/export" />} variant="outline" nativeButton={false}>
+                <Download />
+                RAISE listesi ({num(segmentCounts.raise)})
+              </Button>
+            ) : null}
             <Button render={<Link href="/companies" />} variant="outline" nativeButton={false}>
               Tüm firmalar
             </Button>
@@ -276,6 +283,9 @@ export default async function CompanyAnalysisPage({
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/40 text-muted-foreground">
                   <tr>
+                    <th className="w-10 py-2.5 pl-4 text-left text-[11px] font-medium" title="RAISE hedefi">
+                      RAISE
+                    </th>
                     {sortHeader("name", "Firma")}
                     {sortHeader("sector", "Sektör")}
                     {sortHeader("contacts", "Kişi", "text-right")}
@@ -296,7 +306,10 @@ export default async function CompanyAnalysisPage({
                 </thead>
                 <tbody>
                   {rows.map((row) => (
-                    <tr key={row.id} className="border-b last:border-0 hover:bg-muted/30">
+                    <tr key={row.id} className={cn("border-b last:border-0 hover:bg-muted/30", row.raiseTarget && "bg-violet-50/60")}>
+                      <td className="py-2.5 pl-4">
+                        <RaiseToggle companyId={row.id} name={row.name} selected={row.raiseTarget} />
+                      </td>
                       <td className="px-4 py-2.5">
                         <Link href={`/companies/${row.id}`} className="font-medium hover:underline">
                           {row.name}

@@ -35,6 +35,8 @@ model Company {
   city      String?
   sector    String?
   notes     String?
+  // Marked as a target for RAISE (the partner AI-training firm) from Firma Analizi.
+  raiseTarget Boolean @default(false)
   ownerId   String
   owner     User     @relation(fields: [ownerId], references: [id])
   createdAt DateTime @default(now())
