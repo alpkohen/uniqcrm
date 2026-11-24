@@ -7,6 +7,7 @@ import {
   NO_VALUE,
   SEGMENTS,
   SIZES,
+  attachTraining,
   computeFacets,
   computeStats,
   duplicateGroups,
@@ -15,6 +16,7 @@ import {
   monthlyAdds,
   parseCompanyFilters,
   sortRows,
+  workedLabel,
   type CompanyFilters,
   type SortKey,
 } from "@/lib/company-analysis";
@@ -37,6 +39,7 @@ function queryString(f: CompanyFilters, overrides: Overrides = {}) {
     sector: f.sector,
     city: f.city,
     size: f.size,
+    worked: f.worked,
     q: f.q,
     sort: f.sort === "contacts" ? "" : f.sort,
     dir: f.dir === "desc" ? "" : f.dir,
@@ -77,6 +80,7 @@ export default async function CompanyAnalysisPage({
   };
 
   const all = await loadCompanyRows();
+  const trainingError = await attachTraining(all);
   const { stats, segmentCounts } = computeStats(all);
   const facets = computeFacets(all, f);
   const filtered = sortRows(filterRows(all, f), f);
@@ -85,7 +89,7 @@ export default async function CompanyAnalysisPage({
   const current = Math.min(page, pageCount);
   const rows = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
 
-  const toEntries = (items: { key: string; label: string; color: string; count: number }[], param: "sector" | "city" | "size"): FacetEntry[] =>
+  const toEntries = (items: { key: string; label: string; color: string; count: number }[], param: "sector" | "city" | "size" | "worked"): FacetEntry[] =>
     items.map((item) => {
       const active = f[param] === item.key;
       return { ...item, active, href: hrefFor({ [param]: active ? "" : item.key }) };
@@ -93,12 +97,14 @@ export default async function CompanyAnalysisPage({
   const sectorEntries = toEntries(facets.sectors, "sector");
   const cityEntries = toEntries(facets.cities, "city");
   const sizeEntries = toEntries(facets.sizes, "size");
+  const workedEntries = toEntries(facets.worked, "worked");
   const sum = (entries: FacetEntry[]) => entries.reduce((n, e) => n + e.count, 0);
 
   const chips: { label: string; href: string }[] = [];
   if (f.sector) chips.push({ label: `Sektör: ${f.sector === NO_VALUE ? "girilmemiş" : f.sector}`, href: hrefFor({ sector: "" }) });
   if (f.city) chips.push({ label: `Şehir: ${f.city === NO_VALUE ? "girilmemiş" : f.city}`, href: hrefFor({ city: "" }) });
   if (f.size) chips.push({ label: `Büyüklük: ${SIZES.find((s) => s.key === f.size)?.label ?? f.size}`, href: hrefFor({ size: "" }) });
+  if (f.worked) chips.push({ label: `Eğitim: ${workedLabel(f.worked)}`, href: hrefFor({ worked: "" }) });
   if (f.q) chips.push({ label: `Arama: “${f.q}”`, href: hrefFor({ q: "" }) });
 
   const monthly = monthlyAdds(all, 12);
@@ -156,11 +162,17 @@ export default async function CompanyAnalysisPage({
         }
       />
 
-      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
         <Kpi label="Toplam firma" value={num(stats.total)} sub="tekil firma kaydı" />
         <Kpi label="Kişisi olan" value={num(stats.withContacts)} sub={`%${pct(stats.withContacts, stats.total)} oran`} accent="#0d9488" />
         <Kpi label="Açık fırsatı olan" value={num(stats.withOpen)} sub={`%${pct(stats.withOpen, stats.total)} oran`} accent="#4f46e5" />
         <Kpi label="Müşteri" value={num(stats.customers)} sub="en az 1 kazanılmış fırsat" accent="#16a34a" />
+        <Kpi
+          label="Geçmişte çalışılan"
+          value={trainingError ? "—" : num(stats.trained)}
+          sub="Data Analiz tablosunda eğitimi olan"
+          accent="#0d9488"
+        />
         <Kpi label="Sektörü girilmiş" value={num(stats.withSector)} sub={`%${pct(stats.withSector, stats.total)} oran`} accent="#2563eb" />
         <Kpi
           label="Olası mükerrer"
@@ -201,6 +213,9 @@ export default async function CompanyAnalysisPage({
 
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,310px)_minmax(0,1fr)]">
         <div className="grid gap-4">
+          {trainingError ? null : (
+            <PeopleFacetCard title="Eğitim geçmişi" hint="Firmayla en son çalışılan yıl" items={workedEntries} total={sum(workedEntries)} />
+          )}
           <PeopleFacetCard title="Sektörler" hint="Firmanın sektörü" items={sectorEntries} total={sum(sectorEntries)} visible={10} />
           <PeopleFacetCard title="Şehirler" hint="Firmanın şehri" items={cityEntries} total={sum(cityEntries)} visible={8} />
           <PeopleFacetCard title="Büyüklük" hint="Firmadaki kişi sayısına göre" items={sizeEntries} total={sum(sizeEntries)} />
@@ -219,12 +234,19 @@ export default async function CompanyAnalysisPage({
               {f.sector ? <input type="hidden" name="sector" value={f.sector} /> : null}
               {f.city ? <input type="hidden" name="city" value={f.city} /> : null}
               {f.size ? <input type="hidden" name="size" value={f.size} /> : null}
+              {f.worked ? <input type="hidden" name="worked" value={f.worked} /> : null}
               <input name="q" defaultValue={f.q} placeholder="Firma adı…" className="field-input sm:w-64" />
               <Button type="submit" variant="outline" size="sm">
                 Ara
               </Button>
             </form>
           </div>
+
+          {trainingError ? (
+            <p className="border-b bg-amber-50 px-4 py-2 text-xs text-amber-900">
+              Eğitim geçmişi okunamadı, liste onsuz gösteriliyor: {trainingError}
+            </p>
+          ) : null}
 
           {chips.length > 0 ? (
             <div className="flex flex-wrap items-center gap-1.5 border-b bg-muted/30 px-4 py-2">
@@ -259,6 +281,7 @@ export default async function CompanyAnalysisPage({
                     {sortHeader("contacts", "Kişi", "text-right")}
                     {sortHeader("open", "Açık fırsat", "text-right")}
                     {sortHeader("won", "Kazanılan", "text-right")}
+                    {sortHeader("training", "Eğitim geçmişi", "text-right")}
                     <th className="hidden px-4 py-2.5 text-left font-medium 2xl:table-cell">
                       <Link
                         href={hrefFor({ sort: "created", dir: f.sort === "created" && f.dir === "desc" ? "asc" : "", page: "" })}
@@ -296,6 +319,20 @@ export default async function CompanyAnalysisPage({
                             {num(row.wonDeals)}
                             {row.wonAmount > 0 ? <span className="block text-xs text-muted-foreground">{formatTry(row.wonAmount)}</span> : null}
                           </>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">
+                        {row.training ? (
+                          <span title={`Tablodaki adı: ${row.training.sheetNames.join(", ")}`}>
+                            {num(row.training.days)} gün
+                            <span className="block text-xs text-muted-foreground">
+                              {row.training.firstYear === row.training.lastYear
+                                ? row.training.lastYear
+                                : `${row.training.firstYear}–${row.training.lastYear}`}
+                            </span>
+                          </span>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
@@ -424,7 +461,8 @@ export default async function CompanyAnalysisPage({
 
       <p className="mt-6 text-xs text-muted-foreground">
         Her satır bir firma kaydıdır. Kişi ve fırsat sayıları firmaya bağlı kayıtlardan hesaplanır; “olası mükerrer” işareti
-        yalnızca addan çıkarılır, kayıtların kendisi değişmez.
+        yalnızca addan çıkarılır, kayıtların kendisi değişmez. Eğitim geçmişi Data Analiz tablosundan, firma adı eşleştirilerek
+        gelir (gün = “BI için Gün Sayısı”); adı tablodakinden çok farklı yazılmış firmalar eşleşmeyebilir.
       </p>
     </div>
   );

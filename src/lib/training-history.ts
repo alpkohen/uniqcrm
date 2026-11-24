@@ -135,13 +135,73 @@ export function buildMatrix(rows: TrainingRow[], f: TrainingFilters, lastYear: n
   return { years, companies, yearTotals, grandTotal, rowCount };
 }
 
-// Links each sheet company to the CRM company with the same normalized name, when there is one.
+export type TrainingSummary = { days: number; firstYear: number; lastYear: number; sheetNames: string[] };
+
+// Matches sheet company names to CRM companies. Names are compared after normalizeCompanyName
+// (case, Turkish letters, A.Ş./Ltd. ignored). When there is no exact match, a name that is the
+// start of exactly one CRM name ("ING BANK" / "Ing", "VDF" / "VDF Sigorta") is accepted too;
+// names that could be several different CRM firms are left unmatched.
+export function matchSheetToCrm(sheetNames: string[], crm: { id: string; name: string }[]) {
+  const byKey = new Map<string, string[]>();
+  for (const c of crm) {
+    const key = normalizeCompanyName(c.name);
+    if (!key) continue;
+    const ids = byKey.get(key);
+    if (ids) ids.push(c.id);
+    else byKey.set(key, [c.id]);
+  }
+  const keys = [...byKey.keys()];
+  const out = new Map<string, string[]>();
+  for (const name of sheetNames) {
+    const key = normalizeCompanyName(name);
+    if (!key) continue;
+    const exact = byKey.get(key);
+    if (exact) {
+      out.set(name, exact);
+      continue;
+    }
+    const near = keys.filter((k) => k.startsWith(`${key} `) || key.startsWith(`${k} `));
+    if (near.length === 1) out.set(name, byKey.get(near[0])!);
+  }
+  return out;
+}
+
+// Training days per CRM company, over every year up to the current one. Rows with 0 days
+// (cancelled, not yet held) do not count as having worked with the company.
+export function trainingByCrmCompany(rows: TrainingRow[], crm: { id: string; name: string }[], lastYear: number) {
+  const perSheet = new Map<string, { days: number; firstYear: number; lastYear: number }>();
+  for (const r of rows) {
+    if (r.days <= 0 || r.year > lastYear) continue;
+    const cur = perSheet.get(r.company);
+    if (cur) {
+      cur.days += r.days;
+      cur.firstYear = Math.min(cur.firstYear, r.year);
+      cur.lastYear = Math.max(cur.lastYear, r.year);
+    } else perSheet.set(r.company, { days: r.days, firstYear: r.year, lastYear: r.year });
+  }
+  const matches = matchSheetToCrm([...perSheet.keys()], crm);
+  const out = new Map<string, TrainingSummary>();
+  for (const [sheetName, ids] of matches) {
+    const t = perSheet.get(sheetName)!;
+    for (const id of ids) {
+      const cur = out.get(id);
+      if (cur) {
+        cur.days += t.days;
+        cur.firstYear = Math.min(cur.firstYear, t.firstYear);
+        cur.lastYear = Math.max(cur.lastYear, t.lastYear);
+        cur.sheetNames.push(sheetName);
+      } else out.set(id, { ...t, sheetNames: [sheetName] });
+    }
+  }
+  return out;
+}
+
+// Links each sheet company to a CRM company (the first one when the name matches several records).
 export async function attachCrmIds(rows: CompanyYearRow[]) {
   const companies = await prisma.company.findMany({ select: { id: true, name: true } });
-  const byKey = new Map<string, string>();
-  for (const c of companies) {
-    const key = normalizeCompanyName(c.name);
-    if (key && !byKey.has(key)) byKey.set(key, c.id);
-  }
-  for (const row of rows) row.crmId = byKey.get(normalizeCompanyName(row.company)) ?? null;
+  const matches = matchSheetToCrm(
+    rows.map((r) => r.company),
+    companies,
+  );
+  for (const row of rows) row.crmId = matches.get(row.company)?.[0] ?? null;
 }

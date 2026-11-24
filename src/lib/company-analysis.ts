@@ -3,6 +3,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { foldTitle } from "@/lib/title-groups";
 import { normalizeCompanyName } from "@/lib/company-name";
+import { loadTrainingRows, trainingByCrmCompany, type TrainingSummary } from "@/lib/training-history";
 
 export const NO_VALUE = "__none";
 
@@ -12,6 +13,7 @@ export const SEGMENTS = [
   { key: "nocontacts", label: "Kişisiz" },
   { key: "open", label: "Açık fırsatı olanlar" },
   { key: "won", label: "Müşteriler (kazanılmış)" },
+  { key: "trained", label: "Geçmişte çalışılan" },
   { key: "nosector", label: "Sektörü eksik" },
   { key: "dup", label: "Olası mükerrer" },
 ] as const;
@@ -26,7 +28,7 @@ export const SIZES = [
 ] as const;
 type SizeKey = (typeof SIZES)[number]["key"];
 
-export const SORTS = ["name", "sector", "city", "contacts", "open", "won", "wonAmount", "created"] as const;
+export const SORTS = ["name", "sector", "city", "contacts", "open", "won", "wonAmount", "training", "created"] as const;
 export type SortKey = (typeof SORTS)[number];
 
 export type CompanyRow = {
@@ -45,6 +47,8 @@ export type CompanyRow = {
   wonAmount: number;
   dupKey: string;
   dupCount: number;
+  // Training history from the Data Analiz sheet, null when the company has none (or it could not be read).
+  training: TrainingSummary | null;
 };
 
 export type CompanyFilters = {
@@ -52,6 +56,7 @@ export type CompanyFilters = {
   sector: string;
   city: string;
   size: string;
+  worked: string;
   q: string;
   sort: SortKey;
   dir: "asc" | "desc";
@@ -69,6 +74,7 @@ export function parseCompanyFilters(params: RawParams): CompanyFilters {
     sector: first(params.sector)?.trim() ?? "",
     city: first(params.city)?.trim() ?? "",
     size: SIZES.some((s) => s.key === size) ? size : "",
+    worked: first(params.worked)?.trim() ?? "",
     q: first(params.q)?.trim() ?? "",
     sort: (SORTS as readonly string[]).includes(sort) ? (sort as SortKey) : "contacts",
     dir: first(params.dir) === "asc" ? "asc" : "desc",
@@ -145,7 +151,35 @@ export async function loadCompanyRows(): Promise<CompanyRow[]> {
     wonAmount: Number(r.won_amount),
     dupKey,
     dupCount: groups.get(dupKey) ?? 1,
+    training: null,
   }));
+}
+
+// Fills `training` from the Data Analiz sheet. Returns an error message instead of throwing, so the
+// page still works (without the training column) when the sheet cannot be read.
+export async function attachTraining(rows: CompanyRow[]): Promise<string | null> {
+  try {
+    const training = trainingByCrmCompany(await loadTrainingRows(), rows, new Date().getFullYear());
+    for (const row of rows) row.training = training.get(row.id) ?? null;
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+}
+
+export const WORKED_OLD = "old";
+const WORKED_SINCE = 2020;
+
+// Facet key for "when did we last work with this firm": a year from 2020 on, "old" before that, or none.
+export function workedKey(row: CompanyRow) {
+  if (!row.training) return NO_VALUE;
+  return row.training.lastYear >= WORKED_SINCE ? String(row.training.lastYear) : WORKED_OLD;
+}
+
+export function workedLabel(key: string) {
+  if (key === NO_VALUE) return "Hiç çalışılmamış";
+  if (key === WORKED_OLD) return `${WORKED_SINCE} öncesi`;
+  return `Son çalışma ${key}`;
 }
 
 export function sizeOf(contacts: number): SizeKey {
@@ -166,6 +200,8 @@ function segmentPasses(row: CompanyRow, seg: SegmentKey) {
       return row.openDeals > 0;
     case "won":
       return row.wonDeals > 0;
+    case "trained":
+      return row.training !== null;
     case "nosector":
       return !row.sector;
     case "dup":
@@ -175,7 +211,7 @@ function segmentPasses(row: CompanyRow, seg: SegmentKey) {
   }
 }
 
-type Skip = "sector" | "city" | "size";
+type Skip = "sector" | "city" | "size" | "worked";
 
 function matches(row: CompanyRow, f: CompanyFilters, tokens: string[], skip?: Skip) {
   if (!segmentPasses(row, f.seg)) return false;
@@ -186,6 +222,7 @@ function matches(row: CompanyRow, f: CompanyFilters, tokens: string[], skip?: Sk
   if (skip !== "sector" && f.sector && (row.sector ?? NO_VALUE) !== f.sector) return false;
   if (skip !== "city" && f.city && (row.city ?? NO_VALUE) !== f.city) return false;
   if (skip !== "size" && f.size && sizeOf(row.contacts) !== f.size) return false;
+  if (skip !== "worked" && f.worked && workedKey(row) !== f.worked) return false;
   return true;
 }
 
@@ -209,6 +246,8 @@ export function sortRows(rows: CompanyRow[], f: CompanyFilters) {
         return r.wonDeals;
       case "wonAmount":
         return r.wonAmount;
+      case "training":
+        return r.training?.days ?? 0;
       case "created":
         return r.createdAt.getTime();
       default:
@@ -233,8 +272,13 @@ export function computeFacets(rows: CompanyRow[], f: CompanyFilters) {
   const sectors = new Map<string, number>();
   const cities = new Map<string, number>();
   const sizes = new Map<string, number>();
+  const worked = new Map<string, number>();
 
   for (const row of rows) {
+    if (matches(row, f, tokens, "worked")) {
+      const key = workedKey(row);
+      worked.set(key, (worked.get(key) ?? 0) + 1);
+    }
     if (matches(row, f, tokens, "sector")) {
       const key = row.sector ?? NO_VALUE;
       sectors.set(key, (sectors.get(key) ?? 0) + 1);
@@ -269,6 +313,18 @@ export function computeFacets(rows: CompanyRow[], f: CompanyFilters) {
     sizes: SIZES.map((s) => ({ key: s.key, label: s.label, color: s.color, count: sizes.get(s.key) ?? 0 })).filter(
       (i) => i.count > 0 || i.key === f.size,
     ),
+    // Newest year first, then "before 2020", then "never".
+    worked: [...new Set([...worked.keys(), ...(f.worked ? [f.worked] : [])])]
+      .map((key) => ({
+        key,
+        label: workedLabel(key),
+        color: key === NO_VALUE ? "#94a3b8" : key === WORKED_OLD ? "#a8a29e" : "#0d9488",
+        count: worked.get(key) ?? 0,
+      }))
+      .sort((a, b) => {
+        const rank = (k: string) => (k === NO_VALUE ? -2 : k === WORKED_OLD ? -1 : Number(k));
+        return rank(b.key) - rank(a.key);
+      }),
   };
 }
 
@@ -281,7 +337,9 @@ export function computeStats(rows: CompanyRow[]) {
   let withCity = 0;
   let withWebsite = 0;
   let withPhone = 0;
+  let trained = 0;
   for (const row of rows) {
+    if (row.training) trained += 1;
     if (row.contacts > 0) withContacts += 1;
     if (row.openDeals > 0) withOpen += 1;
     if (row.wonDeals > 0) customers += 1;
@@ -297,6 +355,7 @@ export function computeStats(rows: CompanyRow[]) {
     nocontacts: rows.length - withContacts,
     open: withOpen,
     won: customers,
+    trained,
     nosector: rows.length - withSector,
     dup: rows.filter((r) => r.dupCount > 1).length,
   };
@@ -311,6 +370,7 @@ export function computeStats(rows: CompanyRow[]) {
       withWebsite,
       withPhone,
       dupGroups: dupGroups.size,
+      trained,
     },
     segmentCounts,
   };
