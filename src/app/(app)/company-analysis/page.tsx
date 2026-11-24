@@ -184,11 +184,19 @@ export default async function CompanyAnalysisPage({
 
       <nav aria-label="Segmentler" className="mb-4 flex flex-wrap gap-1.5 rounded-xl border bg-card p-1.5">
         {SEGMENTS.map((seg) => {
-          const active = f.seg === seg.key;
+          const active =
+            seg.key === "all"
+              ? f.seg === "all" && !f.sector && !f.city && !f.size && !f.worked && !f.q
+              : f.seg === seg.key;
           return (
             <Link
               key={seg.key}
-              href={hrefFor({ seg: seg.key === "all" ? "" : seg.key })}
+              // "Tümü" resets every filter (side groups and search too), not only the segment.
+              href={
+                seg.key === "all"
+                  ? hrefFor({ seg: "", sector: "", city: "", size: "", worked: "", q: "" })
+                  : hrefFor({ seg: seg.key })
+              }
               prefetch={false}
               aria-current={active ? "true" : undefined}
               className={cn(
