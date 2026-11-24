@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { PeopleFacetCard, type FacetEntry } from "@/components/people-facet-card";
 import { LinkPending } from "@/components/link-pending";
 import { RaiseToggle } from "@/components/raise-toggle";
+import { features } from "@/lib/brand";
 import { cn } from "cn";
 
 const MONTH_LABELS = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
@@ -80,7 +81,12 @@ export default async function CompanyAnalysisPage({
   };
 
   const all = await loadCompanyRows();
-  const trainingError = await attachTraining(all);
+  // UNIQ-only parts: training history (Data Analiz sheet) and RAISE target picking.
+  const showTraining = features.trainingHistory();
+  const showRaise = features.raiseTargets();
+  const trainingError = showTraining ? await attachTraining(all) : null;
+  const trainingOk = showTraining && !trainingError;
+  const segments = SEGMENTS.filter((s) => (s.key !== "trained" || trainingOk) && (s.key !== "raise" || showRaise));
   const { stats, segmentCounts } = computeStats(all);
   const facets = computeFacets(all, f);
   const filtered = sortRows(filterRows(all, f), f);
@@ -155,7 +161,7 @@ export default async function CompanyAnalysisPage({
               <Download />
               Listeyi dışa aktar
             </Button>
-            {segmentCounts.raise > 0 ? (
+            {showRaise && segmentCounts.raise > 0 ? (
               <Button render={<a href="/api/raise/export" />} variant="outline" nativeButton={false}>
                 <Download />
                 RAISE listesi ({num(segmentCounts.raise)})
@@ -173,17 +179,14 @@ export default async function CompanyAnalysisPage({
         <Kpi label="Kişisi olan" value={num(stats.withContacts)} sub={`%${pct(stats.withContacts, stats.total)} oran`} accent="#0d9488" />
         <Kpi label="Açık fırsatı olan" value={num(stats.withOpen)} sub={`%${pct(stats.withOpen, stats.total)} oran`} accent="#4f46e5" />
         <Kpi label="Müşteri" value={num(stats.customers)} sub="en az 1 kazanılmış fırsat" accent="#16a34a" />
-        <Kpi
-          label="Geçmişte çalışılan"
-          value={trainingError ? "—" : num(stats.trained)}
-          sub="eğitim tablosunda var"
-          accent="#0d9488"
-        />
+        {trainingOk ? (
+          <Kpi label="Geçmişte çalışılan" value={num(stats.trained)} sub="eğitim tablosunda var" accent="#0d9488" />
+        ) : null}
         <Kpi label="Sektörü girilmiş" value={num(stats.withSector)} sub={`%${pct(stats.withSector, stats.total)} oran`} accent="#2563eb" />
       </div>
 
       <nav aria-label="Segmentler" className="mb-4 flex flex-wrap gap-1.5 rounded-xl border bg-card p-1.5">
-        {SEGMENTS.map((seg) => {
+        {segments.map((seg) => {
           const active =
             seg.key === "all"
               ? f.seg === "all" && !f.sector && !f.city && !f.size && !f.worked && !f.q
@@ -221,7 +224,7 @@ export default async function CompanyAnalysisPage({
 
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,310px)_minmax(0,1fr)]">
         <div className="grid gap-4">
-          {trainingError ? null : (
+          {!trainingOk ? null : (
             <PeopleFacetCard title="Eğitim geçmişi" hint="Firmayla en son çalışılan yıl" items={workedEntries} total={sum(workedEntries)} />
           )}
           <PeopleFacetCard title="Sektörler" hint="Firmanın sektörü" items={sectorEntries} total={sum(sectorEntries)} visible={10} />
@@ -284,15 +287,17 @@ export default async function CompanyAnalysisPage({
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/40 text-muted-foreground">
                   <tr>
-                    <th className="w-10 py-2.5 pl-4 text-left text-[11px] font-medium" title="RAISE hedefi">
-                      RAISE
-                    </th>
+                    {showRaise ? (
+                      <th className="w-10 py-2.5 pl-4 text-left text-[11px] font-medium" title="RAISE hedefi">
+                        RAISE
+                      </th>
+                    ) : null}
                     {sortHeader("name", "Firma")}
                     {sortHeader("sector", "Sektör")}
                     {sortHeader("contacts", "Kişi", "text-right")}
                     {sortHeader("open", "Açık fırsat", "text-right")}
                     {sortHeader("won", "Kazanılan", "text-right")}
-                    {sortHeader("training", "Eğitim geçmişi", "text-right")}
+                    {trainingOk ? sortHeader("training", "Eğitim geçmişi", "text-right") : null}
                     <th className="hidden px-4 py-2.5 text-left font-medium 2xl:table-cell">
                       <Link
                         href={hrefFor({ sort: "created", dir: f.sort === "created" && f.dir === "desc" ? "asc" : "", page: "" })}
@@ -307,10 +312,12 @@ export default async function CompanyAnalysisPage({
                 </thead>
                 <tbody>
                   {rows.map((row) => (
-                    <tr key={row.id} className={cn("border-b last:border-0 hover:bg-muted/30", row.raiseTarget && "bg-violet-50/60")}>
-                      <td className="py-2.5 pl-4">
-                        <RaiseToggle companyId={row.id} name={row.name} selected={row.raiseTarget} />
-                      </td>
+                    <tr key={row.id} className={cn("border-b last:border-0 hover:bg-muted/30", showRaise && row.raiseTarget && "bg-violet-50/60")}>
+                      {showRaise ? (
+                        <td className="py-2.5 pl-4">
+                          <RaiseToggle companyId={row.id} name={row.name} selected={row.raiseTarget} />
+                        </td>
+                      ) : null}
                       <td className="px-4 py-2.5">
                         <Link href={`/companies/${row.id}`} className="font-medium hover:underline">
                           {row.name}
@@ -337,6 +344,7 @@ export default async function CompanyAnalysisPage({
                           <span className="text-muted-foreground">—</span>
                         )}
                       </td>
+                      {trainingOk ? (
                       <td className="px-4 py-2.5 text-right tabular-nums">
                         {row.training ? (
                           <span title={`Tablodaki adı: ${row.training.sheetNames.join(", ")}`}>
@@ -351,6 +359,7 @@ export default async function CompanyAnalysisPage({
                           <span className="text-muted-foreground">—</span>
                         )}
                       </td>
+                      ) : null}
                       <td className="hidden px-4 py-2.5 text-muted-foreground 2xl:table-cell">{formatDate(row.createdAt)}</td>
                     </tr>
                   ))}
@@ -475,8 +484,10 @@ export default async function CompanyAnalysisPage({
 
       <p className="mt-6 text-xs text-muted-foreground">
         Her satır bir firma kaydıdır. Kişi ve fırsat sayıları firmaya bağlı kayıtlardan hesaplanır; “olası mükerrer” işareti
-        yalnızca addan çıkarılır, kayıtların kendisi değişmez. Eğitim geçmişi Data Analiz tablosundan, firma adı eşleştirilerek
-        gelir (gün = “BI için Gün Sayısı”); adı tablodakinden çok farklı yazılmış firmalar eşleşmeyebilir.
+        yalnızca addan çıkarılır, kayıtların kendisi değişmez.
+        {trainingOk
+          ? " Eğitim geçmişi Data Analiz tablosundan, firma adı eşleştirilerek gelir (gün = “BI için Gün Sayısı”); adı tablodakinden çok farklı yazılmış firmalar eşleşmeyebilir."
+          : null}
       </p>
     </div>
   );

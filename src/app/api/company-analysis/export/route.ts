@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/session";
+import { features } from "@/lib/brand";
 import { xlsxResponse, todayStamp } from "@/lib/export";
 import { attachTraining, filterRows, loadCompanyRows, parseCompanyFilters, sortRows } from "@/lib/company-analysis";
 
@@ -8,7 +9,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const filters = parseCompanyFilters(Object.fromEntries(searchParams));
   const all = await loadCompanyRows();
-  await attachTraining(all);
+  if (features.trainingHistory()) await attachTraining(all);
   const rows = sortRows(filterRows(all, filters), filters).map((row) => ({
     Firma: row.name,
     "RAISE hedefi": row.raiseTarget ? "Evet" : "",

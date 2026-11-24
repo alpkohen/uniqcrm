@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowDown, ArrowUp, ExternalLink } from "lucide-react";
+import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
+import { features } from "@/lib/brand";
 import {
   FILTER_DEFS,
   attachCrmIds,
@@ -34,6 +36,7 @@ export default async function TrainingHistoryPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   await requireUser();
+  if (!features.trainingHistory()) notFound();
   const sp = await searchParams;
   const f = parseTrainingFilters(sp);
   const sort = (Array.isArray(sp.sort) ? sp.sort[0] : sp.sort) ?? "total";

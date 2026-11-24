@@ -2,11 +2,13 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { fullName } from "@/lib/format";
 import { xlsxResponse, todayStamp } from "@/lib/export";
+import { features } from "@/lib/brand";
 
 // People at the companies marked as RAISE targets, one row per person (companies without
 // people still get one row so none drops off the list).
 export async function GET() {
   await requireUser();
+  if (!features.raiseTargets()) return new Response("Not found", { status: 404 });
 
   const companies = await prisma.company.findMany({
     where: { raiseTarget: true },

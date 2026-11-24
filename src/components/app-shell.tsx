@@ -43,11 +43,11 @@ const NAV = [
   { href: "/settings", label: "Ayarlar", icon: Settings },
 ];
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+function NavLinks({ onNavigate, hidden = [] }: { onNavigate?: () => void; hidden?: string[] }) {
   const pathname = usePathname();
   return (
     <nav className="grid gap-0.5">
-      {NAV.map((item) => {
+      {NAV.filter((item) => !hidden.includes(item.href)).map((item) => {
         const active =
           item.href === "/"
             ? pathname === "/"
@@ -76,9 +76,13 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
 export function AppShell({
   user,
+  brandName = "UNIQ",
+  hiddenNav = [],
   children,
 }: {
   user: { name: string; email: string; role: string };
+  brandName?: string;
+  hiddenNav?: string[];
   children: ReactNode;
 }) {
   return (
@@ -86,7 +90,7 @@ export function AppShell({
       <aside className="hidden w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex">
         <div className="px-5 py-5">
           <p className="text-[11px] font-medium tracking-[0.2em] text-sidebar-primary uppercase">
-            UNIQ
+            {brandName}
           </p>
           <p className="mt-1 text-lg font-semibold tracking-tight">CRM</p>
         </div>
@@ -94,7 +98,7 @@ export function AppShell({
           <GlobalSearch />
         </div>
         <div className="flex-1 px-3">
-          <NavLinks />
+          <NavLinks hidden={hiddenNav} />
         </div>
         <div className="border-t border-sidebar-border px-4 py-4">
           <p className="truncate text-sm font-medium">{user.name}</p>
@@ -115,7 +119,7 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b bg-card px-4 py-3 md:hidden">
           <div>
-            <p className="text-[11px] font-medium tracking-[0.2em] text-primary uppercase">UNIQ</p>
+            <p className="text-[11px] font-medium tracking-[0.2em] text-primary uppercase">{brandName}</p>
             <p className="text-sm font-semibold">CRM</p>
           </div>
           <Sheet>
@@ -131,7 +135,7 @@ export function AppShell({
                 <GlobalSearch />
               </div>
               <div className="px-3">
-                <NavLinks />
+                <NavLinks hidden={hiddenNav} />
               </div>
             </SheetContent>
           </Sheet>

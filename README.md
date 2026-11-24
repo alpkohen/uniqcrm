@@ -64,3 +64,17 @@ Email/IMAP/Gmail sync, sequences, inbound forms, calendar sync, advanced reports
 Duplicate e-mails are skipped. Missing companies are created.
 
 Deal CSV import is intentionally stubbed for a later sprint.
+
+## RAISE kurulumu (ayrı CRM, aynı kod)
+
+RAISE aynı kodla, kendi veritabanı ve Netlify sitesiyle çalışır; UNIQ verisini hiç görmez.
+
+1. Yeni bir Supabase projesi açın, bağlantı adresini alın.
+2. Şemayı kurun: `DATABASE_URL=<RAISE db> npx prisma db push`
+3. Kullanıcıları ve "Hedef firmalar" hattını oluşturun (ilk kişi Yönetici olur, geçici şifreler ekrana yazılır):
+   `DATABASE_URL=<RAISE db> npx tsx prisma/setup-raise.ts "Ad Soyad <eposta>" "Ad Soyad <eposta>"`
+4. Yeni bir Netlify sitesi açın (aynı repo) ve ortam değişkenlerini girin: `APP_BRAND=raise`, `DATABASE_URL`, `SESSION_SECRET` (UNIQ'ten farklı). `TRAINING_SHEET_ID` girmeyin.
+5. UNIQ'te Firma Analizi'nde işaretlenen hedefleri aktarın (önce `--dry-run` ile deneyin):
+   `UNIQ_DATABASE_URL=<UNIQ db> DATABASE_URL=<RAISE db> npx tsx prisma/transfer-raise-targets.ts <sahip eposta>`
+   Yalnızca firma adı, sektör, şehir, web sitesi ve telefon aktarılır. Kişileri de aktarmak için `--with-contacts` ekleyin;
+   UNIQ ile RAISE ayrı şirketler olduğundan bu bir kişisel veri aktarımıdır (KVKK), kararı buna göre verin.

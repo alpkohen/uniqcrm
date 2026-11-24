@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { brand } from "@/lib/brand";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,10 +14,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Uniq CRM",
-  description: "Uniq iç CRM ve saha satış uygulaması",
-};
+export function generateMetadata(): Metadata {
+  const b = brand();
+  return { title: b.title, description: b.description };
+}
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

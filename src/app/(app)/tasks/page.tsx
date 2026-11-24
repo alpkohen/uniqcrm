@@ -115,7 +115,7 @@ export default async function TasksPage({
     <div>
       <PageHeader
         title="Görevler"
-        description="Gecikenler üstte vurgulanır. Takvim senkronu yok — Uniq içi teslim tarihleri ve toplantılar."
+        description="Gecikenler üstte vurgulanır. Takvim senkronu yok — ekip içi teslim tarihleri ve toplantılar."
       />
 
       <section className="mb-6 rounded-xl border border-destructive/20 bg-destructive/5">
