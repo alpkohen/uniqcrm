@@ -54,12 +54,12 @@ function queryString(f: CompanyFilters, overrides: Overrides = {}) {
 
 function Kpi({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
   return (
-    <div className="rounded-xl border bg-card px-4 py-3">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="mt-1 font-heading text-2xl tracking-tight tabular-nums" style={accent ? { color: accent } : undefined}>
+    <div className="min-w-0 rounded-lg border bg-card px-3 py-2" title={sub}>
+      <p className="truncate text-[11px] font-medium text-muted-foreground">{label}</p>
+      <p className="font-heading text-lg leading-tight tracking-tight tabular-nums" style={accent ? { color: accent } : undefined}>
         {value}
       </p>
-      {sub ? <p className="text-xs text-muted-foreground">{sub}</p> : null}
+      {sub ? <p className="truncate text-[11px] text-muted-foreground">{sub}</p> : null}
     </div>
   );
 }
@@ -169,7 +169,7 @@ export default async function CompanyAnalysisPage({
         }
       />
 
-      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         <Kpi label="Toplam firma" value={num(stats.total)} sub="tekil firma kaydı" />
         <Kpi label="Kişisi olan" value={num(stats.withContacts)} sub={`%${pct(stats.withContacts, stats.total)} oran`} accent="#0d9488" />
         <Kpi label="Açık fırsatı olan" value={num(stats.withOpen)} sub={`%${pct(stats.withOpen, stats.total)} oran`} accent="#4f46e5" />
@@ -177,7 +177,7 @@ export default async function CompanyAnalysisPage({
         <Kpi
           label="Geçmişte çalışılan"
           value={trainingError ? "—" : num(stats.trained)}
-          sub="Data Analiz tablosunda eğitimi olan"
+          sub="eğitim tablosunda var"
           accent="#0d9488"
         />
         <Kpi label="Sektörü girilmiş" value={num(stats.withSector)} sub={`%${pct(stats.withSector, stats.total)} oran`} accent="#2563eb" />
