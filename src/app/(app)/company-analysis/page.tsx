@@ -54,12 +54,11 @@ function queryString(f: CompanyFilters, overrides: Overrides = {}) {
 
 function Kpi({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
   return (
-    <div className="min-w-0 rounded-lg border bg-card px-3 py-2" title={sub}>
-      <p className="truncate text-[11px] font-medium text-muted-foreground">{label}</p>
-      <p className="font-heading text-lg leading-tight tracking-tight tabular-nums" style={accent ? { color: accent } : undefined}>
+    <div className="w-32 rounded-lg border bg-card px-2.5 py-1.5" title={sub}>
+      <p className="truncate text-[11px] text-muted-foreground">{label}</p>
+      <p className="text-base font-semibold leading-tight tabular-nums" style={accent ? { color: accent } : undefined}>
         {value}
       </p>
-      {sub ? <p className="truncate text-[11px] text-muted-foreground">{sub}</p> : null}
     </div>
   );
 }
@@ -169,7 +168,7 @@ export default async function CompanyAnalysisPage({
         }
       />
 
-      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+      <div className="mb-3 flex flex-wrap gap-2">
         <Kpi label="Toplam firma" value={num(stats.total)} sub="tekil firma kaydı" />
         <Kpi label="Kişisi olan" value={num(stats.withContacts)} sub={`%${pct(stats.withContacts, stats.total)} oran`} accent="#0d9488" />
         <Kpi label="Açık fırsatı olan" value={num(stats.withOpen)} sub={`%${pct(stats.withOpen, stats.total)} oran`} accent="#4f46e5" />
@@ -181,12 +180,6 @@ export default async function CompanyAnalysisPage({
           accent="#0d9488"
         />
         <Kpi label="Sektörü girilmiş" value={num(stats.withSector)} sub={`%${pct(stats.withSector, stats.total)} oran`} accent="#2563eb" />
-        <Kpi
-          label="Olası mükerrer"
-          value={num(stats.dupGroups)}
-          sub="aynı firmanın farklı yazımı"
-          accent={stats.dupGroups > 0 ? "#ea580c" : undefined}
-        />
       </div>
 
       <nav aria-label="Segmentler" className="mb-4 flex flex-wrap gap-1.5 rounded-xl border bg-card p-1.5">

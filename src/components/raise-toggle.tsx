@@ -1,41 +1,35 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { setRaiseTarget } from "@/actions/raise";
-import { cn } from "cn";
 
+// A native checkbox, so the tick shows the moment it is clicked; a toast confirms the save.
 export function RaiseToggle({ companyId, name, selected: initial }: { companyId: string; name: string; selected: boolean }) {
   const [selected, setSelected] = useState(initial);
   const [pending, startTransition] = useTransition();
 
   return (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={selected}
+    <input
+      type="checkbox"
+      checked={selected}
+      disabled={pending}
       aria-label={`${name} RAISE hedefi`}
       title={selected ? "RAISE hedefinden çıkar" : "RAISE hedefi olarak işaretle"}
-      onClick={() => {
-        const next = !selected;
+      onChange={(event) => {
+        const next = event.target.checked;
         setSelected(next);
         startTransition(async () => {
           try {
             await setRaiseTarget(companyId, next);
+            toast.success(next ? `${name} RAISE listesine eklendi` : `${name} RAISE listesinden çıkarıldı`);
           } catch {
             setSelected(!next);
             toast.error("Kaydedilemedi, tekrar deneyin.");
           }
         });
       }}
-      className={cn(
-        "flex size-5 items-center justify-center rounded border transition-colors",
-        selected ? "border-violet-500 bg-violet-500 text-white" : "border-input bg-background hover:border-violet-400",
-        pending && "opacity-60",
-      )}
-    >
-      {selected ? <Check className="size-3.5" strokeWidth={3} /> : null}
-    </button>
+      className="size-4 cursor-pointer accent-violet-600 disabled:cursor-wait"
+    />
   );
 }
