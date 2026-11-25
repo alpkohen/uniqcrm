@@ -83,3 +83,13 @@ export async function deleteCompany(companyId: string) {
   revalidatePath("/companies");
   redirect("/companies");
 }
+
+// Changes a company's owner straight from the Firmalar list.
+export async function setCompanyOwner(companyId: string, ownerId: string) {
+  await requireUser();
+  const owner = await prisma.user.findUnique({ where: { id: ownerId }, select: { id: true } });
+  if (!owner) throw new Error("Kullanıcı bulunamadı.");
+  await prisma.company.update({ where: { id: companyId }, data: { ownerId } });
+  revalidatePath("/companies");
+  revalidatePath(`/companies/${companyId}`);
+}

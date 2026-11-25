@@ -4,6 +4,7 @@ import { PAGE_SIZE } from "@/lib/constants";
 import { buildCompanyWhere } from "@/lib/company-filters";
 import { PageHeader, Pagination, EmptyState } from "@/components/ui-helpers";
 import { Button } from "@/components/ui/button";
+import { CompanyOwnerSelect } from "@/components/owner-select";
 
 export default async function CompaniesPage({
   searchParams,
@@ -15,7 +16,7 @@ export default async function CompaniesPage({
   const page = Math.max(1, Number(params.page ?? 1) || 1);
   const where = await buildCompanyWhere(query);
 
-  const [total, companies] = await Promise.all([
+  const [total, companies, users] = await Promise.all([
     prisma.company.count({ where }),
     prisma.company.findMany({
       where,
@@ -27,6 +28,7 @@ export default async function CompaniesPage({
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
+    prisma.user.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -85,7 +87,9 @@ export default async function CompaniesPage({
                   <td className="px-4 py-3">{company.sector ?? "—"}</td>
                   <td className="px-4 py-3">{company.city ?? "—"}</td>
                   <td className="px-4 py-3">{company._count.contacts}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{company.owner.name}</td>
+                  <td className="px-4 py-1.5">
+                    <CompanyOwnerSelect companyId={company.id} companyName={company.name} ownerId={company.ownerId} users={users} />
+                  </td>
                 </tr>
               ))}
             </tbody>

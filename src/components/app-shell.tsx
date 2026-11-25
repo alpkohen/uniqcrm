@@ -1,10 +1,14 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  ArrowUpDown,
   BarChart3,
+  Check,
+  ChevronDown,
+  ChevronUp,
   Building2,
   ChartBar,
   ChartPie,
@@ -43,16 +47,108 @@ const NAV = [
   { href: "/settings", label: "Ayarlar", icon: Settings },
 ];
 
+const ORDER_KEY = "nav-order";
+const ORDER_EVENT = "nav-order-change";
+
+// The menu order is a per-browser preference: kept in localStorage, never required.
+function readOrder(): string[] {
+  try {
+    const raw = window.localStorage.getItem(ORDER_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeOrder(order: string[]) {
+  try {
+    if (order.length) window.localStorage.setItem(ORDER_KEY, JSON.stringify(order));
+    else window.localStorage.removeItem(ORDER_KEY);
+  } catch {
+    // Storage blocked (private mode): the order just isn't remembered.
+  }
+  window.dispatchEvent(new Event(ORDER_EVENT));
+}
+
+function useNavOrder() {
+  const [order, setOrder] = useState<string[]>([]);
+  useEffect(() => {
+    const sync = () => setOrder(readOrder());
+    sync();
+    window.addEventListener(ORDER_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(ORDER_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+  return order;
+}
+
+// Saved positions first (in saved order), then any item not in the saved list at its default place.
+function applyOrder<T extends { href: string }>(items: T[], order: string[]) {
+  const rank = (href: string) => {
+    const i = order.indexOf(href);
+    return i === -1 ? order.length + items.findIndex((x) => x.href === href) : i;
+  };
+  return [...items].sort((a, b) => rank(a.href) - rank(b.href));
+}
+
 function NavLinks({ onNavigate, hidden = [] }: { onNavigate?: () => void; hidden?: string[] }) {
   const pathname = usePathname();
+  const order = useNavOrder();
+  const [editing, setEditing] = useState(false);
+  const items = applyOrder(
+    NAV.filter((item) => !hidden.includes(item.href)),
+    order,
+  );
+
+  const move = (index: number, delta: number) => {
+    const next = items.map((i) => i.href);
+    const target = index + delta;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    writeOrder(next);
+  };
+
   return (
     <nav className="grid gap-0.5">
-      {NAV.filter((item) => !hidden.includes(item.href)).map((item) => {
+      {items.map((item, index) => {
         const active =
           item.href === "/"
             ? pathname === "/"
             : pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = item.icon;
+        if (editing) {
+          return (
+            <div
+              key={item.href}
+              className="flex items-center gap-2.5 rounded-lg bg-sidebar-accent/40 py-1 pr-1 pl-3 text-sm text-sidebar-foreground"
+            >
+              <Icon className="size-4 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">{item.label}</span>
+              <button
+                type="button"
+                onClick={() => move(index, -1)}
+                disabled={index === 0}
+                aria-label={`${item.label} yukarı taşı`}
+                className="rounded p-1 hover:bg-sidebar-accent disabled:opacity-25"
+              >
+                <ChevronUp className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => move(index, 1)}
+                disabled={index === items.length - 1}
+                aria-label={`${item.label} aşağı taşı`}
+                className="rounded p-1 hover:bg-sidebar-accent disabled:opacity-25"
+              >
+                <ChevronDown className="size-4" />
+              </button>
+            </div>
+          );
+        }
         return (
           <Link
             key={item.href}
@@ -70,6 +166,21 @@ function NavLinks({ onNavigate, hidden = [] }: { onNavigate?: () => void; hidden
           </Link>
         );
       })}
+      <div className="mt-2 flex items-center gap-3 px-3 text-xs text-sidebar-foreground/50">
+        <button
+          type="button"
+          onClick={() => setEditing((v) => !v)}
+          className="inline-flex items-center gap-1.5 hover:text-sidebar-foreground"
+        >
+          {editing ? <Check className="size-3.5" /> : <ArrowUpDown className="size-3.5" />}
+          {editing ? "Bitti" : "Menüyü düzenle"}
+        </button>
+        {editing && order.length > 0 ? (
+          <button type="button" onClick={() => writeOrder([])} className="hover:text-sidebar-foreground">
+            Varsayılana dön
+          </button>
+        ) : null}
+      </div>
     </nav>
   );
 }
